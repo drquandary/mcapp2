@@ -13,7 +13,7 @@ def read_log_file(file_path):
                 }
                 logs.append(log_entry)
             except KeyError as e:
-                print(f"Missing field in log file: {e}")
+                logging.error(f"Missing field in log file: {e}")
             except ValueError as e:
-                print(f"Invalid format in log file: {e}")
+                logging.error(f"Invalid format in log file: {e}")
     return logs
