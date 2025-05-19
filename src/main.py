@@ -14,5 +14,6 @@ def main(log_file_path):
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Usage: python main.py <log_file_path>")
+        sys.exit(1)
     else:
         main(sys.argv[1])
