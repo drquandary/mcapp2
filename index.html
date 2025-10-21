@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Survivors - Survive the Horde!</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="menu-screen" class="screen active">
+            <h1>🐍 SNAKE SURVIVORS 🐍</h1>
+            <p class="subtitle">Grow longer, survive longer!</p>
+            <div class="instructions">
+                <h3>How to Play:</h3>
+                <ul>
+                    <li>Use WASD or Arrow Keys to move</li>
+                    <li>Defeat enemies to gain XP</li>
+                    <li>Level up to get upgrades</li>
+                    <li>Your tail grows with each level</li>
+                    <li>Don't let enemies touch your tail!</li>
+                </ul>
+            </div>
+            <button id="start-button" class="game-button">START GAME</button>
+        </div>
+
+        <div id="game-screen" class="screen">
+            <canvas id="game-canvas"></canvas>
+            <div id="ui-overlay">
+                <div id="top-bar">
+                    <div class="stat">
+                        <span class="label">HP:</span>
+                        <div class="health-bar">
+                            <div id="health-fill" class="health-fill"></div>
+                        </div>
+                        <span id="health-text">100/100</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">Level:</span>
+                        <span id="level-text">1</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">XP:</span>
+                        <div class="xp-bar">
+                            <div id="xp-fill" class="xp-fill"></div>
+                        </div>
+                    </div>
+                    <div class="stat">
+                        <span class="label">Time:</span>
+                        <span id="time-text">0:00</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">Kills:</span>
+                        <span id="kills-text">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="levelup-screen" class="screen">
+            <h2>LEVEL UP!</h2>
+            <p>Choose an upgrade:</p>
+            <div id="upgrade-options"></div>
+        </div>
+
+        <div id="gameover-screen" class="screen">
+            <h1>GAME OVER</h1>
+            <div id="final-stats"></div>
+            <button id="restart-button" class="game-button">PLAY AGAIN</button>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
