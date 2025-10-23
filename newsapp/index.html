@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>Pulse - Your Personalized News</title>
+    <title>NewsBadger - Your Personalized News</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <!-- Loading Screen -->
     <div id="loading-screen" class="screen active">
         <div class="loading-content">
-            <div class="logo">📰</div>
-            <h1>Pulse</h1>
+            <div class="logo">🦡</div>
+            <h1>NewsBadger</h1>
             <p>Personalizing your news feed...</p>
             <div class="loading-spinner"></div>
         </div>
@@ -22,8 +22,8 @@
     <!-- Onboarding Screen -->
     <div id="onboarding-screen" class="screen">
         <div class="onboarding-content">
-            <div class="logo-large">📰</div>
-            <h1>Welcome to Pulse</h1>
+            <div class="logo-large">🦡</div>
+            <h1>Welcome to NewsBadger</h1>
             <p class="subtitle">AI-powered personalized news</p>
 
             <div class="onboarding-features">
@@ -69,8 +69,8 @@
         <!-- Top Bar -->
         <header class="top-bar">
             <div class="header-left">
-                <div class="logo-small">📰</div>
-                <h2>Pulse</h2>
+                <div class="logo-small">🦡</div>
+                <h2>NewsBadger</h2>
             </div>
             <div class="header-right">
                 <button class="icon-btn" id="settings-btn">
@@ -105,29 +105,10 @@
             </button>
         </nav>
 
-        <!-- Feed View -->
+        <!-- Feed View (TikTok Style) -->
         <div id="feed-view" class="view active">
-            <div class="card-stack" id="card-stack">
-                <!-- Cards will be dynamically inserted here -->
-            </div>
-
-            <div class="action-buttons">
-                <button class="action-btn skip-btn" id="skip-btn">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"/>
-                        <line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                </button>
-                <button class="action-btn save-btn" id="save-btn">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-                    </svg>
-                </button>
-                <button class="action-btn like-btn" id="like-btn">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                    </svg>
-                </button>
+            <div class="tiktok-feed" id="tiktok-feed">
+                <!-- Articles will be dynamically inserted here -->
             </div>
 
             <div class="empty-state" id="empty-state" style="display: none;">
@@ -140,12 +121,8 @@
 
         <!-- Explore View -->
         <div id="explore-view" class="view">
-            <div class="explore-content">
-                <h2>Explore Topics</h2>
-                <div class="topic-grid" id="topic-grid"></div>
-
-                <h2>Trending Now</h2>
-                <div class="trending-list" id="trending-list"></div>
+            <div class="explore-feed" id="explore-feed">
+                <!-- List cards will be dynamically inserted here -->
             </div>
         </div>
 
@@ -226,7 +203,27 @@
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
                 </svg>
             </button>
+
             <div id="article-content"></div>
+
+            <!-- Article Action Buttons -->
+            <div class="article-actions" id="article-actions">
+                <button class="side-action-btn bookmark-action" id="article-bookmark-btn" title="Bookmark">
+                    🔖
+                </button>
+                <button class="side-action-btn like-action" id="article-like-btn" title="Like">
+                    ❤️
+                </button>
+                <button class="side-action-btn dislike-action" id="article-dislike-btn" title="Pass">
+                    👎
+                </button>
+                <button class="side-action-btn more-action" id="article-more-btn" title="Explore More">
+                    🔍
+                </button>
+                <button class="side-action-btn read-action" id="article-read-btn" title="Read Full Article" style="background: var(--primary-color); color: white;">
+                    📖
+                </button>
+            </div>
         </div>
     </div>
 

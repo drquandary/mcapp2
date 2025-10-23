@@ -9,13 +9,14 @@ const AppState = {
         savedArticles: [],
         readArticles: [],
         topicScores: {},
-        apiKey: '',
-        autoSummarize: true,
+        apiKey: 'dummy_key',
+        autoSummarize: false,
         personalization: true,
         darkMode: false
     },
     articles: [],
     currentCardIndex: 0,
+    cardHistory: [], // Track swiped cards for undo
     stats: {
         articlesRead: 0,
         streak: 0,
@@ -23,8 +24,46 @@ const AppState = {
     }
 };
 
-// ===== SAMPLE NEWS DATA =====
-// In production, this would come from a news API
+// ===== RSS FEEDS BY TOPIC =====
+const RSS_FEEDS = {
+    technology: [
+        'https://www.theverge.com/rss/index.xml',
+        'https://techcrunch.com/feed/',
+        'https://www.wired.com/feed/rss'
+    ],
+    science: [
+        'https://www.sciencedaily.com/rss/all.xml',
+        'https://www.scientificamerican.com/feed/',
+        'https://phys.org/rss-feed/'
+    ],
+    ai: [
+        'https://www.artificialintelligence-news.com/feed/',
+        'https://www.marktechpost.com/feed/'
+    ],
+    business: [
+        'https://feeds.bloomberg.com/markets/news.rss',
+        'https://www.economist.com/business/rss.xml'
+    ],
+    climate: [
+        'https://www.climatecentral.org/feed',
+        'https://insideclimatenews.org/feed/'
+    ],
+    health: [
+        'https://www.medicalnewstoday.com/rss/news.xml',
+        'https://www.sciencedaily.com/rss/health_medicine.xml'
+    ],
+    politics: [
+        'https://www.politico.com/rss/politics08.xml',
+        'https://thehill.com/feed/'
+    ],
+    world: [
+        'https://feeds.bbci.co.uk/news/world/rss.xml',
+        'https://www.aljazeera.com/xml/rss/all.xml'
+    ]
+};
+
+// ===== SAMPLE NEWS DATA (Fallback) =====
+// Used as fallback if RSS feeds fail
 const SAMPLE_ARTICLES = [
     {
         id: 1,
@@ -32,8 +71,8 @@ const SAMPLE_ARTICLES = [
         source: "TechNews",
         topic: "ai",
         summary: "Researchers have developed a new AI model that demonstrates unprecedented reasoning capabilities, potentially marking a significant milestone in artificial intelligence development.",
-        content: "In a groundbreaking development, researchers at leading AI labs have unveiled a new language model that demonstrates human-level reasoning across various domains...",
-        image: "https://via.placeholder.com/600x250/6366f1/ffffff?text=AI+Breakthrough",
+        content: "In a groundbreaking development, researchers at leading AI labs have unveiled a new language model that demonstrates human-level reasoning across various domains. The model, which has been trained on diverse datasets spanning scientific literature, technical documentation, and real-world problem-solving scenarios, shows remarkable capabilities in understanding context, drawing inferences, and providing nuanced responses to complex queries.\n\nThe research team conducted extensive testing across multiple benchmarks, including mathematical reasoning, logical puzzles, and natural language understanding tasks. In each category, the model performed on par with or exceeded human baseline performance. This achievement represents years of research into neural architecture, training methodologies, and data curation.\n\nExperts in the field have praised the advancement while noting important considerations around responsible deployment. Dr. Sarah Chen, a leading AI ethics researcher, commented: 'This represents a significant technical achievement, but it also underscores the importance of ensuring these powerful systems are developed with proper safeguards and ethical guidelines.'\n\nThe implications for various industries are substantial, with potential applications ranging from advanced medical diagnosis support to complex engineering problem-solving. However, researchers emphasize that continued vigilance and interdisciplinary collaboration will be essential as these technologies mature.",
+        image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=600&h=250&fit=crop",
         readTime: 5,
         publishedAt: new Date().toISOString()
     },
@@ -43,8 +82,8 @@ const SAMPLE_ARTICLES = [
         source: "Science Daily",
         topic: "climate",
         summary: "New research reveals significant shifts in ocean currents that could impact global weather patterns and marine ecosystems in unprecedented ways.",
-        content: "A team of climate scientists has documented unexpected changes in major ocean currents...",
-        image: "https://via.placeholder.com/600x250/10b981/ffffff?text=Climate+Science",
+        content: "A team of climate scientists has documented unexpected changes in major ocean currents that regulate global weather patterns and marine ecosystems. Using advanced satellite monitoring and deep-ocean sensors deployed over the past decade, researchers have identified measurable alterations in the Atlantic Meridional Overturning Circulation (AMOC), a critical component of Earth's climate system.\n\nThe findings, published in a leading scientific journal, show that these changes are occurring faster than previously predicted by climate models. Dr. James Morrison, lead author of the study, explains: 'We're seeing shifts that we didn't expect to observe for another 20-30 years. This accelerated timeline has significant implications for coastal communities, marine biodiversity, and global weather patterns.'\n\nThe research team analyzed data from thousands of measurement points across the Atlantic Ocean, combining satellite observations with direct measurements from autonomous underwater vehicles. Their analysis reveals that warming ocean temperatures are affecting the density-driven circulation that moves water between the tropics and polar regions.\n\nThe potential impacts are far-reaching. Changes in these currents could affect rainfall patterns in regions home to billions of people, alter the distribution of marine species, and influence the rate of heat absorption by the oceans. Scientists are calling for increased monitoring efforts and emphasize the urgency of addressing climate change through coordinated global action.",
+        image: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=600&h=250&fit=crop",
         readTime: 7,
         publishedAt: new Date(Date.now() - 86400000).toISOString()
     },
@@ -54,8 +93,8 @@ const SAMPLE_ARTICLES = [
         source: "Tech Weekly",
         topic: "technology",
         summary: "Leading technology firms have agreed to implement stricter privacy protections and data handling practices in response to growing consumer concerns.",
-        content: "In a coordinated announcement, several major technology companies revealed new privacy initiatives...",
-        image: "https://via.placeholder.com/600x250/ec4899/ffffff?text=Privacy+Standards",
+        content: "In a coordinated announcement, several major technology companies revealed new privacy initiatives designed to give users greater control over their personal data. The joint commitment includes enhanced transparency about data collection practices, simplified privacy controls, and new tools for users to understand and manage how their information is used.\n\nThe announcement comes after years of increasing public concern about data privacy and following regulatory pressure from governments worldwide. Companies participating in the initiative have agreed to standardize privacy settings across platforms, making it easier for users to make informed decisions about their data.\n\nKey features of the new standards include opt-in consent for data sharing, regular privacy audits by independent third parties, and the implementation of privacy-by-design principles in product development. Users will also gain access to comprehensive dashboards showing what data has been collected and how it's being used.\n\nConsumer advocacy groups have cautiously welcomed the announcement while emphasizing the need for ongoing oversight. 'This is a positive step, but the proof will be in the implementation,' noted privacy advocate Maria Rodriguez. 'We'll be monitoring closely to ensure these commitments translate into meaningful protections for users.'",
+        image: "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=600&h=250&fit=crop",
         readTime: 4,
         publishedAt: new Date(Date.now() - 172800000).toISOString()
     },
@@ -65,8 +104,8 @@ const SAMPLE_ARTICLES = [
         source: "Science Today",
         topic: "science",
         summary: "Scientists have achieved a major milestone in quantum error correction, bringing practical quantum computers closer to reality.",
-        content: "Researchers have made significant progress in solving one of quantum computing's biggest challenges...",
-        image: "https://via.placeholder.com/600x250/f59e0b/ffffff?text=Quantum+Computing",
+        content: "Researchers have made significant progress in solving one of quantum computing's biggest challenges: error correction. A team at a leading research institution has demonstrated a new approach that dramatically reduces the error rate in quantum calculations, potentially paving the way for practical quantum computers that can outperform classical systems in real-world applications.\n\nQuantum computers harness the principles of quantum mechanics to perform certain calculations exponentially faster than traditional computers. However, quantum bits (qubits) are extremely fragile and prone to errors from environmental interference. The new error correction technique uses a novel arrangement of qubits that can detect and correct errors without destroying the quantum state.\n\nIn laboratory tests, the system maintained quantum coherence for significantly longer periods than previous methods, allowing for more complex calculations to be performed reliably. Professor Elena Kowalski, who led the research, explained: 'This breakthrough addresses one of the fundamental barriers to scaling up quantum computers. We're now able to perform calculations that were previously impossible due to error accumulation.'\n\nThe implications extend across multiple fields, from drug discovery and materials science to cryptography and artificial intelligence. While practical quantum computers for everyday use are still years away, this advancement represents a crucial step toward making quantum computing a reality.",
+        image: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=600&h=250&fit=crop",
         readTime: 6,
         publishedAt: new Date(Date.now() - 259200000).toISOString()
     },
@@ -76,8 +115,8 @@ const SAMPLE_ARTICLES = [
         source: "Financial Times",
         topic: "business",
         summary: "Stock markets worldwide experienced significant movements following announcements of new economic policies by major central banks.",
-        content: "Global financial markets showed strong reactions to coordinated policy announcements...",
-        image: "https://via.placeholder.com/600x250/6366f1/ffffff?text=Global+Markets",
+        content: "Global financial markets showed strong reactions to coordinated policy announcements from major central banks, with indices experiencing significant volatility as investors digested the implications of new monetary policy directions. The Federal Reserve, European Central Bank, and Bank of Japan simultaneously announced adjustments to their respective policy frameworks, marking a significant shift in the global economic landscape.\n\nMarket analysts noted that while the immediate reaction was mixed, the long-term implications suggest a period of adjustment as economies navigate changing interest rate environments. Stock indices in major markets moved sharply in early trading before stabilizing as institutional investors reassessed their positions.\n\nThe policy changes reflect central banks' efforts to balance multiple objectives: managing inflation, supporting employment, and maintaining financial stability. Economists are divided on the potential impacts, with some arguing that the coordinated approach demonstrates strong international cooperation, while others express concern about potential unintended consequences.\n\nCurrency markets also showed significant movement, with the dollar strengthening against major currencies before settling into a new trading range. Commodity prices responded to the news as well, with gold and oil experiencing notable price swings. Financial advisors are counseling clients to maintain diversified portfolios and take a long-term perspective during this period of policy transition.",
+        image: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=600&h=250&fit=crop",
         readTime: 5,
         publishedAt: new Date(Date.now() - 345600000).toISOString()
     },
@@ -87,8 +126,8 @@ const SAMPLE_ARTICLES = [
         source: "Innovation Daily",
         topic: "technology",
         summary: "Engineers have developed a new battery technology that could enable electric vehicles to charge in minutes rather than hours.",
-        content: "A team of engineers has created a revolutionary battery design that significantly improves charging speed...",
-        image: "https://via.placeholder.com/600x250/10b981/ffffff?text=Battery+Tech",
+        content: "A team of engineers has created a revolutionary battery design that significantly improves charging speed while maintaining energy density and longevity. The breakthrough, announced at a major technology conference, could transform the electric vehicle industry by addressing one of the primary barriers to widespread EV adoption: charging time.\n\nThe new battery architecture uses a novel electrode design and advanced materials that allow for much faster ion movement without degrading the battery's internal structure. In laboratory tests, the batteries demonstrated the ability to charge to 80% capacity in less than 10 minutes, compared to 30-60 minutes for current fast-charging systems.\n\nDr. Michael Chang, lead engineer on the project, explained the significance: 'We've essentially solved the trade-off between charging speed and battery life. Our batteries can handle rapid charging cycles without the degradation that plagues current systems. This means an EV could be charged as quickly as filling up a gas tank.'\n\nThe technology is currently undergoing real-world testing in partnership with major automotive manufacturers. If successful, commercial production could begin within three years. Industry experts believe this advancement could be the catalyst that accelerates EV adoption to mass-market levels, particularly for consumers who have been hesitant due to charging concerns.",
+        image: "https://images.unsplash.com/photo-1593941707882-a5bba14938c7?w=600&h=250&fit=crop",
         readTime: 5,
         publishedAt: new Date(Date.now() - 432000000).toISOString()
     },
@@ -98,8 +137,8 @@ const SAMPLE_ARTICLES = [
         source: "Health Journal",
         topic: "health",
         summary: "Long-term research shows that Mediterranean diet patterns are associated with better cognitive function and reduced risk of dementia.",
-        content: "A comprehensive study tracking thousands of participants over decades has confirmed...",
-        image: "https://via.placeholder.com/600x250/ec4899/ffffff?text=Health+Study",
+        content: "A comprehensive study tracking thousands of participants over decades has confirmed substantial cognitive benefits associated with Mediterranean diet patterns. The research, published in a leading medical journal, provides robust evidence that dietary choices significantly impact brain health and the risk of age-related cognitive decline.\n\nThe study followed over 7,000 participants for an average of 12 years, carefully documenting dietary habits and conducting regular cognitive assessments. Participants who most closely adhered to Mediterranean diet principles showed 23% lower risk of developing cognitive impairment compared to those with the least adherence.\n\nThe Mediterranean diet emphasizes plant-based foods, olive oil, fish, and moderate amounts of dairy and wine, while limiting red meat and processed foods. Researchers believe the combination of anti-inflammatory compounds, healthy fats, and antioxidants contributes to the protective effects.\n\nDr. Lisa Thompson, the study's principal investigator, noted: 'These findings add to a growing body of evidence that lifestyle factors, particularly diet, play a crucial role in maintaining cognitive health as we age. The good news is that it's never too late to make beneficial dietary changes.' The research team is now investigating the specific biological mechanisms through which diet influences brain health.",
+        image: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=600&h=250&fit=crop",
         readTime: 4,
         publishedAt: new Date(Date.now() - 518400000).toISOString()
     },
@@ -109,8 +148,8 @@ const SAMPLE_ARTICLES = [
         source: "Space News",
         topic: "science",
         summary: "International space agencies have unveiled detailed plans for establishing a permanent human presence on the Moon within the next decade.",
-        content: "In a historic announcement, space agencies from multiple countries revealed comprehensive plans...",
-        image: "https://via.placeholder.com/600x250/6366f1/ffffff?text=Lunar+Base",
+        content: "In a historic announcement, space agencies from multiple countries revealed comprehensive plans for constructing the first permanent lunar base. The ambitious international collaboration aims to establish a sustainable human presence on the Moon by 2035, serving as a stepping stone for future deep space exploration.\n\nThe proposed lunar base will be located near the Moon's south pole, where recent discoveries have confirmed the presence of water ice in permanently shadowed craters. This location offers both scientific value and practical resources for sustaining human habitation. The base will initially house crews of 4-6 astronauts for extended missions lasting several months.\n\nThe project represents the largest international space collaboration since the International Space Station, with participating agencies pooling expertise and resources. Key technologies being developed include advanced life support systems, radiation shielding, and in-situ resource utilization systems that can extract oxygen and water from lunar regolith.\n\nMission planners envision the base serving multiple purposes: conducting lunar science, testing technologies for Mars missions, and potentially supporting commercial activities. Dr. Robert Kim, mission architect, explained: 'This isn't just about returning to the Moon – it's about learning to live and work on another world. The lessons we learn here will be invaluable for eventual Mars missions and beyond.'",
+        image: "https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?w=600&h=250&fit=crop",
         readTime: 6,
         publishedAt: new Date(Date.now() - 604800000).toISOString()
     },
@@ -120,8 +159,8 @@ const SAMPLE_ARTICLES = [
         source: "Tech Ethics",
         topic: "ai",
         summary: "Industry leaders and ethicists have collaborated to propose comprehensive guidelines for responsible AI development and deployment.",
-        content: "A coalition of technology leaders, academics, and ethicists has released a detailed framework...",
-        image: "https://via.placeholder.com/600x250/f59e0b/ffffff?text=AI+Ethics",
+        content: "A coalition of technology leaders, academics, and ethicists has released a detailed framework for responsible AI development, addressing growing concerns about the societal impacts of artificial intelligence. The comprehensive guidelines represent months of collaboration among diverse stakeholders and aim to establish common principles for ethical AI deployment.\n\nThe framework addresses key areas including transparency, accountability, fairness, privacy, and human oversight. It proposes specific mechanisms for auditing AI systems, ensuring diverse representation in development teams, and establishing clear lines of responsibility when AI systems cause harm.\n\nParticularly notable is the emphasis on 'AI impact assessments' that would require organizations to evaluate potential societal consequences before deploying AI systems at scale. The framework also calls for greater public participation in decisions about AI governance and the development of accessible channels for reporting AI-related harms.\n\nDr. Angela Martinez, an AI ethics researcher involved in drafting the framework, commented: 'This represents a significant step toward ensuring AI development serves the public good. However, the real challenge lies in implementation and enforcement. We need both industry commitment and regulatory oversight to make these principles meaningful.'\n\nThe proposal has received mixed reactions, with some praising its comprehensive approach while others argue for stronger enforcement mechanisms. Several governments have indicated interest in incorporating elements of the framework into upcoming AI legislation.",
+        image: "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=600&h=250&fit=crop",
         readTime: 7,
         publishedAt: new Date(Date.now() - 691200000).toISOString()
     },
@@ -131,18 +170,164 @@ const SAMPLE_ARTICLES = [
         source: "Energy Report",
         topic: "climate",
         summary: "For the first time, renewable energy sources have generated more electricity than fossil fuels in a major industrial nation.",
-        content: "In a historic milestone for clean energy transition, renewable sources including solar and wind...",
-        image: "https://via.placeholder.com/600x250/10b981/ffffff?text=Renewable+Energy",
+        content: "In a historic milestone for clean energy transition, renewable sources including solar and wind have generated more electricity than fossil fuels in a major industrial economy for an entire quarter. The achievement, documented in official energy statistics, marks a symbolic and practical turning point in the global shift away from carbon-intensive power generation.\n\nThe transition was driven by massive investments in renewable infrastructure over the past decade, combined with improving technology efficiency and declining costs. Solar and wind installations have proliferated across the country, supported by favorable policy frameworks and growing public support for clean energy.\n\nEnergy analysts note that this milestone, while significant, represents just one step in a longer journey toward complete decarbonization. Grid storage capabilities, transmission infrastructure, and backup power systems will need continued development to ensure reliability as renewable penetration increases further.\n\nEnvironmental advocates celebrated the achievement while emphasizing the need for accelerated action globally. 'This proves that transitioning to renewable energy is not only possible but economically viable,' stated climate policy expert David Park. 'Other nations now have a clear roadmap to follow. The question is whether we can scale this success fast enough to meet our climate goals.'\n\nThe country's success has sparked renewed interest from other nations seeking to replicate the model, with several announcing ambitious new renewable energy targets.",
+        image: "https://images.unsplash.com/photo-1466611653911-95081537e5b7?w=600&h=250&fit=crop",
         readTime: 5,
         publishedAt: new Date(Date.now() - 777600000).toISOString()
     }
 ];
 
+// ===== RSS FEED FETCHER =====
+class RSSFeedFetcher {
+    static async fetchFeed(feedUrl) {
+        try {
+            // Use rss2json API to handle CORS and parse RSS (free tier, no API key needed for basic use)
+            const response = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}&count=10`);
+            const data = await response.json();
+
+            if (data.status === 'ok') {
+                return data.items;
+            }
+            return [];
+        } catch (error) {
+            console.error('RSS fetch error:', error);
+            return [];
+        }
+    }
+
+    static async fetchMultipleFeeds(feedUrls, topic) {
+        const allArticles = [];
+
+        for (const feedUrl of feedUrls) {
+            const items = await this.fetchFeed(feedUrl);
+            items.forEach(item => {
+                allArticles.push({
+                    id: this.generateId(item.link),
+                    title: item.title,
+                    source: item.author || this.extractDomain(item.link),
+                    topic: topic,
+                    summary: this.stripHtml(item.description || item.content || '').substring(0, 200) + '...',
+                    content: this.stripHtml(item.content || item.description || ''),
+                    image: this.extractImage(item) || 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=600&h=250&fit=crop',
+                    readTime: Math.ceil(this.stripHtml(item.content || item.description || '').split(' ').length / 200),
+                    publishedAt: item.pubDate || new Date().toISOString(),
+                    url: item.link
+                });
+            });
+        }
+
+        return allArticles;
+    }
+
+    static async fetchAllTopics(selectedTopics = null) {
+        const topics = selectedTopics || Object.keys(RSS_FEEDS);
+        const allArticles = [];
+
+        for (const topic of topics) {
+            if (RSS_FEEDS[topic]) {
+                const articles = await this.fetchMultipleFeeds(RSS_FEEDS[topic], topic);
+                allArticles.push(...articles);
+            }
+        }
+
+        // Shuffle and limit
+        return this.shuffleArray(allArticles).slice(0, 50);
+    }
+
+    static generateId(url) {
+        // Simple hash function for URLs
+        let hash = 0;
+        for (let i = 0; i < url.length; i++) {
+            const char = url.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        return Math.abs(hash);
+    }
+
+    static extractDomain(url) {
+        try {
+            const domain = new URL(url).hostname.replace('www.', '');
+            return domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1);
+        } catch {
+            return 'Unknown';
+        }
+    }
+
+    static stripHtml(html) {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        return tmp.textContent || tmp.innerText || '';
+    }
+
+    static extractImage(item) {
+        // Try to extract image from various RSS fields
+        if (item.enclosure && item.enclosure.link) {
+            return item.enclosure.link;
+        }
+        if (item.thumbnail) {
+            return item.thumbnail;
+        }
+        // Try to extract from content
+        const imgMatch = (item.content || item.description || '').match(/<img[^>]+src="([^">]+)"/);
+        if (imgMatch) {
+            return imgMatch[1];
+        }
+        return null;
+    }
+
+    static shuffleArray(array) {
+        const newArray = [...array];
+        for (let i = newArray.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+        }
+        return newArray;
+    }
+}
+
 // ===== CLAUDE API INTEGRATION =====
 class ClaudeAPI {
-    constructor(apiKey) {
-        this.apiKey = apiKey;
-        this.baseURL = 'https://api.anthropic.com/v1/messages';
+    constructor(apiKey = 'dummy_key') {
+        this.apiKey = apiKey || 'dummy_key';
+        this.baseURL = 'http://localhost:8081/v1/messages';
+    }
+
+    async fetchArticleContent(url) {
+        if (!this.apiKey) {
+            return null;
+        }
+
+        try {
+            const response = await fetch(this.baseURL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': this.apiKey,
+                    'anthropic-version': '2023-06-01'
+                },
+                body: JSON.stringify({
+                    model: 'claude-3-5-sonnet-20241022',
+                    max_tokens: 2000,
+                    messages: [{
+                        role: 'user',
+                        content: `Please fetch and extract the main article content from this URL: ${url}
+
+Return only the main article text, cleaned of ads, navigation, and other non-content elements. Format it as readable paragraphs.`
+                    }]
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('API request failed');
+            }
+
+            const data = await response.json();
+            return data.content[0].text;
+        } catch (error) {
+            console.error('Claude web fetch error:', error);
+            return null;
+        }
     }
 
     async generateSummary(articleContent, title) {
@@ -289,6 +474,82 @@ Return a JSON object with:
             return { suggestedTopics: [], insights: 'Keep reading to build your profile!' };
         }
     }
+
+    async exploreArticleThemes(article) {
+        if (!this.apiKey) {
+            return {
+                themes: [article.topic],
+                keywords: [],
+                dates: [],
+                searchTerms: [article.topic]
+            };
+        }
+
+        try {
+            const response = await fetch(this.baseURL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': this.apiKey,
+                    'anthropic-version': '2023-06-01'
+                },
+                body: JSON.stringify({
+                    model: 'claude-3-5-sonnet-20241022',
+                    max_tokens: 300,
+                    messages: [{
+                        role: 'user',
+                        content: `Analyze this news article and extract key information for finding related content:
+
+Title: ${article.title}
+Content: ${article.content.substring(0, 1000)}
+
+Extract and return a JSON object with:
+{
+  "themes": ["main theme", "secondary theme"],
+  "keywords": ["key term 1", "key term 2", "key term 3"],
+  "dates": ["any relevant dates mentioned"],
+  "events": ["specific events mentioned"],
+  "searchTerms": ["best search term 1", "best search term 2", "best search term 3"]
+}
+
+Focus on:
+- Main themes and topics
+- Important keywords and entities (companies, people, places, technologies)
+- Relevant dates or time periods
+- Specific events or developments
+- The best search terms to find similar articles`
+                    }]
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('API request failed');
+            }
+
+            const data = await response.json();
+            const text = data.content[0].text;
+            const jsonMatch = text.match(/\{[\s\S]*\}/);
+
+            if (jsonMatch) {
+                return JSON.parse(jsonMatch[0]);
+            }
+
+            return {
+                themes: [article.topic],
+                keywords: [],
+                dates: [],
+                searchTerms: [article.topic]
+            };
+        } catch (error) {
+            console.error('Claude API theme analysis error:', error);
+            return {
+                themes: [article.topic],
+                keywords: [],
+                dates: [],
+                searchTerms: [article.topic]
+            };
+        }
+    }
 }
 
 // ===== LOCAL STORAGE =====
@@ -386,21 +647,42 @@ class CardSwiper {
         this.currentY = 0;
         this.isDragging = false;
 
+        this.addSwipeIndicators();
         this.bindEvents();
+    }
+
+    addSwipeIndicators() {
+        // Add swipe hint overlays if they don't exist
+        if (!this.card.querySelector('.swipe-hint-left')) {
+            const leftHint = document.createElement('div');
+            leftHint.className = 'swipe-hint swipe-hint-left';
+            leftHint.textContent = '👎';
+            this.card.appendChild(leftHint);
+
+            const rightHint = document.createElement('div');
+            rightHint.className = 'swipe-hint swipe-hint-right';
+            rightHint.textContent = '❤️';
+            this.card.appendChild(rightHint);
+        }
     }
 
     bindEvents() {
         this.card.addEventListener('mousedown', this.handleStart.bind(this));
-        this.card.addEventListener('touchstart', this.handleStart.bind(this));
+        this.card.addEventListener('touchstart', this.handleStart.bind(this), { passive: false });
 
         document.addEventListener('mousemove', this.handleMove.bind(this));
-        document.addEventListener('touchmove', this.handleMove.bind(this));
+        document.addEventListener('touchmove', this.handleMove.bind(this), { passive: false });
 
         document.addEventListener('mouseup', this.handleEnd.bind(this));
         document.addEventListener('touchend', this.handleEnd.bind(this));
     }
 
     handleStart(e) {
+        // Don't intercept button clicks
+        if (e.target.closest('button')) {
+            return;
+        }
+
         e.preventDefault();
         this.isDragging = true;
         this.card.classList.add('swiping');
@@ -418,9 +700,33 @@ class CardSwiper {
         this.currentY = point.clientY - this.startY;
 
         const rotate = this.currentX / 10;
+        const opacity = Math.max(0.3, 1 - Math.abs(this.currentX) / 300);
 
+        // Apply transform
         this.card.style.transform = `translate(${this.currentX}px, ${this.currentY}px) rotate(${rotate}deg)`;
-        this.card.style.opacity = 1 - Math.abs(this.currentX) / 300;
+        this.card.style.opacity = opacity;
+
+        // Show swipe indicators
+        const leftHint = this.card.querySelector('.swipe-hint-left');
+        const rightHint = this.card.querySelector('.swipe-hint-right');
+
+        if (leftHint && rightHint) {
+            if (this.currentX < -50) {
+                // Swiping left - show dislike
+                const leftOpacity = Math.min(1, Math.abs(this.currentX) / 150);
+                leftHint.style.setProperty('opacity', leftOpacity, 'important');
+                rightHint.style.setProperty('opacity', '0', 'important');
+            } else if (this.currentX > 50) {
+                // Swiping right - show like
+                const rightOpacity = Math.min(1, this.currentX / 150);
+                rightHint.style.setProperty('opacity', rightOpacity, 'important');
+                leftHint.style.setProperty('opacity', '0', 'important');
+            } else {
+                // Not far enough
+                leftHint.style.setProperty('opacity', '0', 'important');
+                rightHint.style.setProperty('opacity', '0', 'important');
+            }
+        }
     }
 
     handleEnd(e) {
@@ -430,6 +736,12 @@ class CardSwiper {
         this.card.classList.remove('swiping');
 
         const swipeThreshold = 100;
+
+        // Hide indicators
+        const leftHint = this.card.querySelector('.swipe-hint-left');
+        const rightHint = this.card.querySelector('.swipe-hint-right');
+        if (leftHint) leftHint.style.setProperty('opacity', '0', 'important');
+        if (rightHint) rightHint.style.setProperty('opacity', '0', 'important');
 
         if (Math.abs(this.currentX) > swipeThreshold) {
             const direction = this.currentX > 0 ? 'right' : 'left';
@@ -461,10 +773,25 @@ class CardSwiper {
 // ===== UI CONTROLLER =====
 class UIController {
     static showScreen(screenId) {
-        document.querySelectorAll('.screen').forEach(screen => {
+        console.log('showScreen called with:', screenId);
+        const screens = document.querySelectorAll('.screen');
+        console.log('Found screens:', screens.length);
+
+        screens.forEach(screen => {
+            console.log('Removing active from:', screen.id);
             screen.classList.remove('active');
         });
-        document.getElementById(screenId).classList.add('active');
+
+        const targetScreen = document.getElementById(screenId);
+        console.log('Target screen element:', targetScreen);
+
+        if (targetScreen) {
+            targetScreen.classList.add('active');
+            console.log('Added active to:', screenId);
+        } else {
+            console.error('Screen not found:', screenId);
+        }
+
         AppState.currentScreen = screenId;
     }
 
@@ -498,6 +825,9 @@ class UIController {
         const summary = article.aiSummary || article.summary;
 
         card.innerHTML = `
+            <div class="card-top-actions">
+                <button class="card-bookmark-btn" data-action="save">🔖</button>
+            </div>
             <img src="${article.image}" alt="${article.title}" class="card-image" onerror="this.src='https://via.placeholder.com/600x250/6366f1/ffffff?text=News'">
             <div class="card-content">
                 <div class="card-meta">
@@ -508,22 +838,65 @@ class UIController {
                 <h2 class="card-title">${article.title}</h2>
                 ${article.aiSummary ? '<div class="ai-badge">✨ AI Summary</div>' : ''}
                 <p class="card-summary">${summary}</p>
-                <a class="read-more-btn" data-article-id="${article.id}">Read full article →</a>
+            </div>
+            <div class="card-footer-actions">
+                <button class="card-footer-btn dislike-btn" data-action="skip">
+                    <span class="btn-icon">👎</span>
+                    <span class="btn-label">Pass</span>
+                </button>
+                <button class="card-footer-btn read-btn" data-article-id="${article.id}">
+                    <span class="btn-icon">📖</span>
+                    <span class="btn-label">Read</span>
+                </button>
+                <button class="card-footer-btn like-btn" data-action="like">
+                    <span class="btn-icon">❤️</span>
+                    <span class="btn-label">Like</span>
+                </button>
             </div>
         `;
 
-        // Add click handler for read more
-        card.querySelector('.read-more-btn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.showArticleDetail(article);
+        // Add click handler for read button
+        const readBtn = card.querySelector('.read-btn');
+        if (readBtn) {
+            readBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                this.showArticleDetail(article);
+            });
+        }
+
+        // Add click handler for bookmark button
+        const bookmarkBtn = card.querySelector('.card-bookmark-btn');
+        if (bookmarkBtn) {
+            bookmarkBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.handleCardAction(article, 'save');
+            });
+        }
+
+        // Add click handlers for footer action buttons
+        card.querySelectorAll('.card-footer-btn').forEach(btn => {
+            const action = btn.dataset.action;
+            if (action) {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (action === 'like') {
+                        this.handleCardAction(article, 'like');
+                    } else if (action === 'skip') {
+                        this.handleCardAction(article, 'skip');
+                    }
+                });
+            }
         });
 
         return card;
     }
 
     static async renderFeed() {
-        const cardStack = document.getElementById('card-stack');
-        cardStack.innerHTML = '';
+        const tiktokFeed = document.getElementById('tiktok-feed');
+        tiktokFeed.innerHTML = '';
+
+        console.log(`renderFeed: Starting with ${AppState.articles.length} articles`);
 
         // Get personalized articles
         const rankedArticles = PersonalizationEngine.rankArticles(
@@ -536,40 +909,164 @@ class UIController {
             article => !AppState.userPreferences.readArticles.includes(article.id)
         );
 
+        console.log(`renderFeed: ${unreadArticles.length} unread articles`);
+
         if (unreadArticles.length === 0) {
+            console.log('renderFeed: No unread articles, showing empty state');
             document.getElementById('empty-state').style.display = 'block';
             return;
         }
 
         document.getElementById('empty-state').style.display = 'none';
 
-        // Render top 3 cards
-        const cardsToShow = unreadArticles.slice(0, 3);
-
-        for (let i = cardsToShow.length - 1; i >= 0; i--) {
-            const article = cardsToShow[i];
-
+        // Render all unread articles
+        for (const article of unreadArticles) {
             // Auto-summarize with Claude if enabled
             if (AppState.userPreferences.autoSummarize && AppState.userPreferences.apiKey && !article.aiSummary) {
                 const claude = new ClaudeAPI(AppState.userPreferences.apiKey);
                 article.aiSummary = await claude.generateSummary(article.content, article.title);
             }
 
-            const card = this.createNewsCard(article);
-            cardStack.appendChild(card);
+            const articleEl = this.createTikTokArticle(article);
+            tiktokFeed.appendChild(articleEl);
+        }
 
-            // Add swipe functionality to top card
-            if (i === 0) {
-                new CardSwiper(card, (direction) => {
-                    this.handleCardSwipe(article, direction);
-                });
+        // Track which article is currently visible
+        this.setupScrollTracking();
+    }
+
+    static createTikTokArticle(article) {
+        const articleDiv = document.createElement('div');
+        articleDiv.className = 'tiktok-article';
+        articleDiv.dataset.articleId = article.id;
+
+        const summary = article.aiSummary || article.summary;
+
+        articleDiv.innerHTML = `
+            <img src="${article.image}" alt="${article.title}" class="card-image" onerror="this.src='https://via.placeholder.com/600x250/6366f1/ffffff?text=News'">
+            <div class="card-content">
+                <div class="card-meta">
+                    <span class="source-badge">${article.source}</span>
+                    <span class="topic-tag">${article.topic}</span>
+                    <span class="topic-tag">${article.readTime} min read</span>
+                </div>
+                <h2 class="card-title" style="cursor: pointer;">${article.title}</h2>
+                ${article.aiSummary ? '<div class="ai-badge">✨ AI Summary</div>' : ''}
+                <p class="card-summary">${summary}</p>
+            </div>
+            <div class="card-footer-actions">
+                <button class="card-footer-btn read-btn" data-article-id="${article.id}">
+                    <span class="btn-icon">📖</span>
+                    <span class="btn-label">Read Full Article</span>
+                </button>
+            </div>
+        `;
+
+        // Add click handler for title
+        const title = articleDiv.querySelector('.card-title');
+        if (title) {
+            title.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showArticleDetail(article);
+            });
+        }
+
+        // Add click handler for read button
+        const readBtn = articleDiv.querySelector('.read-btn');
+        if (readBtn) {
+            readBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showArticleDetail(article);
+            });
+        }
+
+        return articleDiv;
+    }
+
+    static setupScrollTracking() {
+        const feed = document.getElementById('tiktok-feed');
+        let currentArticleId = null;
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
+                    const articleId = parseInt(entry.target.dataset.articleId);
+                    if (articleId !== currentArticleId) {
+                        currentArticleId = articleId;
+                        AppState.currentArticleId = articleId;
+                    }
+                }
+            });
+        }, {
+            threshold: [0.5]
+        });
+
+        feed.querySelectorAll('.tiktok-article').forEach(article => {
+            observer.observe(article);
+        });
+    }
+
+    static getCurrentArticle() {
+        if (!AppState.currentArticleId) return null;
+        return AppState.articles.find(a => a.id === AppState.currentArticleId);
+    }
+
+    static handleTikTokAction(article, action) {
+        const button = document.getElementById(`${action}-action`);
+
+        // Animate button
+        button.classList.add('active');
+        setTimeout(() => button.classList.remove('active'), 300);
+
+        if (action === 'like') {
+            if (!AppState.userPreferences.likedArticles.find(a => a.id === article.id)) {
+                AppState.userPreferences.likedArticles.push(article);
+                PersonalizationEngine.updateTopicScores(AppState.userPreferences, article, true);
+            }
+        } else if (action === 'dislike') {
+            if (!AppState.userPreferences.dislikedArticles.find(a => a.id === article.id)) {
+                AppState.userPreferences.dislikedArticles.push(article);
+                PersonalizationEngine.updateTopicScores(AppState.userPreferences, article, false);
+            }
+
+            // Scroll to next article
+            const feed = document.getElementById('tiktok-feed');
+            const currentArticleEl = feed.querySelector(`[data-article-id="${article.id}"]`);
+            if (currentArticleEl && currentArticleEl.nextElementSibling) {
+                currentArticleEl.nextElementSibling.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        } else if (action === 'bookmark') {
+            if (!AppState.userPreferences.savedArticles.find(a => a.id === article.id)) {
+                AppState.userPreferences.savedArticles.push(article);
             }
         }
+
+        // Mark as read
+        if (!AppState.userPreferences.readArticles.includes(article.id)) {
+            AppState.userPreferences.readArticles.push(article.id);
+            AppState.stats.articlesRead++;
+        }
+
+        // Save to storage
+        Storage.save('userPreferences', AppState.userPreferences);
+        Storage.save('stats', AppState.stats);
     }
 
     static handleCardSwipe(article, direction) {
         const liked = direction === 'right';
         const saved = direction === 'up';
+
+        // Save to history for undo
+        AppState.cardHistory.push({
+            article: article,
+            direction: direction,
+            action: liked ? 'like' : (direction === 'left' ? 'dislike' : 'other')
+        });
+
+        // Keep history limited to last 10 cards
+        if (AppState.cardHistory.length > 10) {
+            AppState.cardHistory.shift();
+        }
 
         if (liked) {
             AppState.userPreferences.likedArticles.push(article);
@@ -590,31 +1087,150 @@ class UIController {
         Storage.save('userPreferences', AppState.userPreferences);
         Storage.save('stats', AppState.stats);
 
+        // Show/hide undo button
+        this.updateUndoButton();
+
         // Render next card
         setTimeout(() => {
             this.renderFeed();
         }, 100);
     }
 
-    static showArticleDetail(article) {
+    static updateUndoButton() {
+        const undoBtn = document.getElementById('undo-btn');
+        if (undoBtn) {
+            if (AppState.cardHistory.length > 0) {
+                undoBtn.style.display = 'flex';
+            } else {
+                undoBtn.style.display = 'none';
+            }
+        }
+    }
+
+    static undoLastSwipe() {
+        if (AppState.cardHistory.length === 0) {
+            return;
+        }
+
+        const lastAction = AppState.cardHistory.pop();
+        const article = lastAction.article;
+
+        // Remove from read articles
+        const readIndex = AppState.userPreferences.readArticles.indexOf(article.id);
+        if (readIndex > -1) {
+            AppState.userPreferences.readArticles.splice(readIndex, 1);
+        }
+
+        // Remove from liked/disliked
+        if (lastAction.action === 'like') {
+            const likedIndex = AppState.userPreferences.likedArticles.findIndex(a => a.id === article.id);
+            if (likedIndex > -1) {
+                AppState.userPreferences.likedArticles.splice(likedIndex, 1);
+                PersonalizationEngine.updateTopicScores(AppState.userPreferences, article, false);
+            }
+        } else if (lastAction.action === 'dislike') {
+            const dislikedIndex = AppState.userPreferences.dislikedArticles.findIndex(a => a.id === article.id);
+            if (dislikedIndex > -1) {
+                AppState.userPreferences.dislikedArticles.splice(dislikedIndex, 1);
+                PersonalizationEngine.updateTopicScores(AppState.userPreferences, article, true);
+            }
+        }
+
+        // Decrease stats
+        if (AppState.stats.articlesRead > 0) {
+            AppState.stats.articlesRead--;
+        }
+
+        // Save to storage
+        Storage.save('userPreferences', AppState.userPreferences);
+        Storage.save('stats', AppState.stats);
+
+        // Update undo button
+        this.updateUndoButton();
+
+        // Re-render feed
+        this.renderFeed();
+    }
+
+    static handleCardAction(article, action) {
+        if (action === 'like') {
+            AppState.userPreferences.likedArticles.push(article);
+            PersonalizationEngine.updateTopicScores(AppState.userPreferences, article, true);
+            AppState.userPreferences.readArticles.push(article.id);
+            AppState.stats.articlesRead++;
+        } else if (action === 'skip') {
+            AppState.userPreferences.dislikedArticles.push(article);
+            PersonalizationEngine.updateTopicScores(AppState.userPreferences, article, false);
+            AppState.userPreferences.readArticles.push(article.id);
+            AppState.stats.articlesRead++;
+        } else if (action === 'save') {
+            if (!AppState.userPreferences.savedArticles.find(a => a.id === article.id)) {
+                AppState.userPreferences.savedArticles.push(article);
+            }
+            // Don't mark as read or move to next card, just save
+            Storage.save('userPreferences', AppState.userPreferences);
+            return;
+        }
+
+        // Save to storage
+        Storage.save('userPreferences', AppState.userPreferences);
+        Storage.save('stats', AppState.stats);
+
+        // Render next card (except for save action)
+        setTimeout(() => {
+            this.renderFeed();
+        }, 100);
+    }
+
+    static async showArticleDetail(article) {
         const modal = document.getElementById('article-modal');
         const content = document.getElementById('article-content');
 
-        content.innerHTML = `
-            <img src="${article.image}" alt="${article.title}" style="width: 100%; border-radius: 0.5rem; margin-bottom: 1.5rem;">
-            <div style="padding: 0 0.5rem;">
-                <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
-                    <span class="source-badge">${article.source}</span>
-                    <span class="topic-tag">${article.topic}</span>
-                    <span class="topic-tag">${article.readTime} min read</span>
-                </div>
-                <h1 style="font-size: 2rem; margin-bottom: 1rem;">${article.title}</h1>
-                ${article.aiSummary ? `<div class="ai-badge" style="margin-bottom: 1rem;">✨ AI-generated summary: ${article.aiSummary}</div>` : ''}
-                <p style="line-height: 1.8; color: var(--text-secondary);">${article.content}</p>
-            </div>
-        `;
+        // Store current article for button handlers
+        AppState.currentModalArticle = article;
 
+        // Initial render with existing content
+        const renderContent = (articleContent, isLoading = false) => {
+            content.innerHTML = `
+                <img src="${article.image}" alt="${article.title}" style="width: 100%; border-radius: 0.5rem; margin-bottom: 1.5rem;" onerror="this.style.display='none'">
+                <div style="padding: 0 0.5rem;">
+                    <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                        <span class="source-badge">${article.source}</span>
+                        <span class="topic-tag">${article.topic}</span>
+                        <span class="topic-tag">${article.readTime} min read</span>
+                        ${article.url ? `<a href="${article.url}" target="_blank" style="color: var(--primary); text-decoration: none;">🔗 View Original</a>` : ''}
+                    </div>
+                    <h1 style="font-size: 2rem; margin-bottom: 1rem;">${article.title}</h1>
+                    ${article.aiSummary ? `<div class="ai-badge" style="margin-bottom: 1rem;">✨ AI-generated summary: ${article.aiSummary}</div>` : ''}
+                    ${isLoading ? '<div style="text-align: center; padding: 2rem;"><div class="loading-spinner"></div><p>Fetching full article content...</p></div>' : ''}
+                    <div style="line-height: 1.8; color: var(--text-secondary); white-space: pre-wrap;">${articleContent}</div>
+                </div>
+            `;
+        };
+
+        // Show initial content
+        renderContent(article.content);
         modal.classList.add('active');
+
+        // If content is short and we have a URL, try to fetch full content with Claude
+        if (article.url && article.content.length < 500 && AppState.userPreferences.apiKey) {
+            renderContent(article.content, true);
+
+            try {
+                const claude = new ClaudeAPI(AppState.userPreferences.apiKey);
+                const fullContent = await claude.fetchArticleContent(article.url);
+
+                if (fullContent && fullContent.length > article.content.length) {
+                    article.fullContent = fullContent;
+                    renderContent(fullContent, false);
+                } else {
+                    renderContent(article.content, false);
+                }
+            } catch (error) {
+                console.error('Error fetching full article:', error);
+                renderContent(article.content, false);
+            }
+        }
 
         // Mark as read
         if (!AppState.userPreferences.readArticles.includes(article.id)) {
@@ -626,52 +1242,260 @@ class UIController {
     }
 
     static renderExploreView() {
-        const topicGrid = document.getElementById('topic-grid');
-        const topics = [
-            { name: 'Technology', icon: '💻', topic: 'technology' },
-            { name: 'Science', icon: '🔬', topic: 'science' },
-            { name: 'AI', icon: '🤖', topic: 'ai' },
-            { name: 'Climate', icon: '🌍', topic: 'climate' },
-            { name: 'Business', icon: '📈', topic: 'business' },
-            { name: 'Health', icon: '⚕️', topic: 'health' },
-            { name: 'Politics', icon: '🏛️', topic: 'politics' },
-            { name: 'Sports', icon: '⚽', topic: 'sports' }
-        ];
+        const exploreFeed = document.getElementById('explore-feed');
 
-        topicGrid.innerHTML = topics.map(t => {
-            const count = AppState.articles.filter(a => a.topic === t.topic).length;
-            return `
-                <div class="topic-card" data-topic="${t.topic}">
-                    <div class="topic-icon">${t.icon}</div>
-                    <div class="topic-name">${t.name}</div>
-                    <div class="topic-count">${count} articles</div>
-                </div>
-            `;
-        }).join('');
+        // Get all articles, sorted by date
+        const articles = [...AppState.articles].sort((a, b) =>
+            new Date(b.publishedAt) - new Date(a.publishedAt)
+        );
 
-        // Render trending
-        const trendingList = document.getElementById('trending-list');
-        const trending = AppState.articles.slice(0, 5);
+        exploreFeed.innerHTML = articles.map(article => this.createListArticleCard(article)).join('');
 
-        trendingList.innerHTML = trending.map((article, index) => `
-            <div class="trending-item" data-article-id="${article.id}">
-                <div class="trending-number">${index + 1}</div>
-                <div class="trending-info">
-                    <h4>${article.title}</h4>
-                    <p>${article.source} · ${article.topic}</p>
+        // Add event listeners
+        exploreFeed.querySelectorAll('.list-card').forEach(cardEl => {
+            const articleId = parseInt(cardEl.dataset.articleId);
+            const article = AppState.articles.find(a => a.id === articleId);
+
+            if (article) {
+                // Read button
+                const readBtn = cardEl.querySelector('.read-btn');
+                if (readBtn) {
+                    readBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.showArticleDetail(article);
+                    });
+                }
+
+                // Pass button
+                const passBtn = cardEl.querySelector('.dislike-btn');
+                if (passBtn) {
+                    passBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.handleCardAction(article, 'skip');
+                        cardEl.style.display = 'none';
+                    });
+                }
+
+                // Like button
+                const likeBtn = cardEl.querySelector('.like-btn');
+                if (likeBtn) {
+                    likeBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.handleCardAction(article, 'like');
+                        cardEl.style.opacity = '0.5';
+                    });
+                }
+
+                // More button (AI exploration)
+                const moreBtn = cardEl.querySelector('.more-btn');
+                if (moreBtn) {
+                    moreBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.exploreTopicWithAI(article);
+                    });
+                }
+            }
+        });
+    }
+
+    static createListArticleCard(article) {
+        const summary = article.aiSummary || article.summary;
+
+        return `
+            <div class="list-card" data-article-id="${article.id}">
+                <img src="${article.image}" alt="${article.title}" class="list-card-image" onerror="this.src='https://via.placeholder.com/100x100/6366f1/ffffff?text=News'">
+                <div class="list-card-content">
+                    <div class="list-card-meta">
+                        <span class="source-badge">${article.source}</span>
+                        <span class="topic-tag">${article.topic}</span>
+                    </div>
+                    <h3 class="list-card-title">${article.title}</h3>
+                    <p class="list-card-summary">${summary}</p>
+
+                    <div class="list-card-actions">
+                        <button class="list-action-btn dislike-btn" data-action="skip" title="Pass">👎</button>
+                        <button class="list-action-btn read-btn" title="Read">📖</button>
+                        <button class="list-action-btn like-btn" data-action="like" title="Like">❤️</button>
+                        <button class="list-action-btn more-btn" title="Find more like this">+</button>
+                    </div>
                 </div>
             </div>
-        `).join('');
+        `;
+    }
 
-        // Add click handlers
-        trendingList.querySelectorAll('.trending-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const articleId = parseInt(item.dataset.articleId);
-                const article = AppState.articles.find(a => a.id === articleId);
-                if (article) {
-                    this.showArticleDetail(article);
+    static async exploreTopicWithAI(article, targetFeed = 'explore') {
+        // Show loading state
+        const loadingMsg = document.createElement('div');
+        loadingMsg.className = 'ai-analysis-banner loading';
+        loadingMsg.innerHTML = `
+            <div class="loading-spinner"></div>
+            <p>🤖 AI is analyzing "${article.title.substring(0, 50)}..." to find related content...</p>
+        `;
+
+        const feedElement = targetFeed === 'explore' ?
+            document.getElementById('explore-feed') :
+            document.getElementById('tiktok-feed');
+
+        feedElement.insertBefore(loadingMsg, feedElement.firstChild);
+        if (targetFeed === 'tiktok') {
+            feedElement.scrollTop = 0;
+        }
+
+        try {
+            // Use Claude to analyze the article
+            const claude = new ClaudeAPI(AppState.userPreferences.apiKey);
+            const analysis = await claude.exploreArticleThemes(article);
+
+            // Find related articles using the AI analysis
+            const relatedArticles = AppState.articles.filter(a => {
+                if (a.id === article.id) return false;
+
+                // Check if article matches any of the search terms, themes, or keywords
+                const titleLower = a.title.toLowerCase();
+                const contentLower = a.content.toLowerCase();
+
+                // Check search terms
+                const matchesSearchTerms = analysis.searchTerms.some(term =>
+                    titleLower.includes(term.toLowerCase()) ||
+                    contentLower.includes(term.toLowerCase())
+                );
+
+                // Check themes
+                const matchesThemes = analysis.themes.some(theme =>
+                    titleLower.includes(theme.toLowerCase()) ||
+                    contentLower.includes(theme.toLowerCase())
+                );
+
+                // Check keywords
+                const matchesKeywords = analysis.keywords.some(keyword =>
+                    titleLower.includes(keyword.toLowerCase()) ||
+                    contentLower.includes(keyword.toLowerCase())
+                );
+
+                return matchesSearchTerms || matchesThemes || matchesKeywords;
+            })
+            .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt))
+            .slice(0, 20);
+
+            // Remove loading message
+            loadingMsg.remove();
+
+            if (relatedArticles.length === 0) {
+                const noResultsBanner = document.createElement('div');
+                noResultsBanner.className = 'ai-analysis-banner';
+                noResultsBanner.innerHTML = `
+                    <h3>🔍 AI Analysis</h3>
+                    <p><strong>Themes:</strong> ${analysis.themes.join(', ')}</p>
+                    <p><strong>Keywords:</strong> ${analysis.keywords.join(', ')}</p>
+                    ${analysis.dates.length > 0 ? `<p><strong>Dates:</strong> ${analysis.dates.join(', ')}</p>` : ''}
+                    ${analysis.events && analysis.events.length > 0 ? `<p><strong>Events:</strong> ${analysis.events.join(', ')}</p>` : ''}
+                    <p style="margin-top: 1rem;">No matching articles found in current feed. Try refreshing to load more articles!</p>
+                    <button class="secondary-btn" onclick="document.getElementById('reload-feed-btn').click()" style="margin-top: 0.5rem; width: auto;">Refresh Feed</button>
+                `;
+                feedElement.insertBefore(noResultsBanner, feedElement.firstChild);
+                if (targetFeed === 'tiktok') {
+                    feedElement.scrollTop = 0;
                 }
-            });
+                return;
+            }
+
+            // Create banner with AI analysis
+            const analysisBanner = document.createElement('div');
+            analysisBanner.className = 'ai-analysis-banner';
+            analysisBanner.innerHTML = `
+                <h3>🔍 AI-Powered Exploration</h3>
+                <p><strong>Themes:</strong> ${analysis.themes.join(', ')}</p>
+                <p><strong>Key Terms:</strong> ${analysis.keywords.slice(0, 5).join(', ')}</p>
+                ${analysis.dates.length > 0 ? `<p><strong>Dates:</strong> ${analysis.dates.join(', ')}</p>` : ''}
+                ${analysis.events && analysis.events.length > 0 ? `<p><strong>Events:</strong> ${analysis.events.join(', ')}</p>` : ''}
+                <p style="margin-top: 0.5rem; font-weight: 600;">Found ${relatedArticles.length} related articles</p>
+            `;
+
+            // Add articles based on feed type
+            if (targetFeed === 'explore') {
+                const newCards = relatedArticles.map(a => this.createListArticleCard(a)).join('');
+                feedElement.innerHTML = analysisBanner.outerHTML + newCards + feedElement.innerHTML;
+                this.attachExploreEventListeners(feedElement);
+                feedElement.scrollTop = 0;
+            } else {
+                // For TikTok feed, add articles to the feed
+                feedElement.insertBefore(analysisBanner, feedElement.firstChild);
+
+                relatedArticles.reverse().forEach(a => {
+                    const articleEl = this.createTikTokArticle(a);
+                    // Insert after the banner
+                    feedElement.insertBefore(articleEl, analysisBanner.nextSibling);
+                });
+
+                this.setupScrollTracking();
+                feedElement.scrollTop = 0;
+            }
+
+        } catch (error) {
+            console.error('Error exploring topic with AI:', error);
+            loadingMsg.remove();
+
+            // Fallback to simple topic matching
+            const relatedArticles = AppState.articles
+                .filter(a => a.topic === article.topic && a.id !== article.id)
+                .slice(0, 20);
+
+            if (relatedArticles.length > 0) {
+                const banner = `<div class="ai-analysis-banner">
+                    <p>🔍 Showing ${relatedArticles.length} articles in "${article.topic}"</p>
+                </div>`;
+
+                if (targetFeed === 'explore') {
+                    const newCards = relatedArticles.map(a => this.createListArticleCard(a)).join('');
+                    feedElement.innerHTML = banner + newCards + feedElement.innerHTML;
+                    this.attachExploreEventListeners(feedElement);
+                }
+            } else {
+                alert('No related articles found. Try refreshing the feed!');
+            }
+        }
+    }
+
+    static attachExploreEventListeners(exploreFeed) {
+        exploreFeed.querySelectorAll('.list-card').forEach(cardEl => {
+            const articleId = parseInt(cardEl.dataset.articleId);
+            const art = AppState.articles.find(a => a.id === articleId);
+
+            if (art) {
+                const readBtn = cardEl.querySelector('.read-btn');
+                if (readBtn) {
+                    readBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.showArticleDetail(art);
+                    });
+                }
+
+                const passBtn = cardEl.querySelector('.dislike-btn');
+                if (passBtn) {
+                    passBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.handleCardAction(art, 'skip');
+                        cardEl.style.display = 'none';
+                    });
+                }
+
+                const likeBtn = cardEl.querySelector('.like-btn');
+                if (likeBtn) {
+                    likeBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.handleCardAction(art, 'like');
+                        cardEl.style.opacity = '0.5';
+                    });
+                }
+
+                const moreBtn = cardEl.querySelector('.more-btn');
+                if (moreBtn) {
+                    moreBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.exploreTopicWithAI(art, 'explore');
+                    });
+                }
+            }
         });
     }
 
@@ -735,41 +1559,89 @@ function setupEventListeners() {
         UIController.renderFeed();
     });
 
+    // Article modal action buttons
+    document.getElementById('article-like-btn').addEventListener('click', () => {
+        const article = AppState.currentModalArticle;
+        if (article) {
+            const button = document.getElementById('article-like-btn');
+            button.classList.add('active');
+            setTimeout(() => button.classList.remove('active'), 300);
+
+            if (!AppState.userPreferences.likedArticles.find(a => a.id === article.id)) {
+                AppState.userPreferences.likedArticles.push(article);
+                PersonalizationEngine.updateTopicScores(AppState.userPreferences, article, true);
+                Storage.save('userPreferences', AppState.userPreferences);
+                alert('Article liked! ❤️');
+            }
+        }
+    });
+
+    document.getElementById('article-dislike-btn').addEventListener('click', () => {
+        const article = AppState.currentModalArticle;
+        if (article) {
+            const button = document.getElementById('article-dislike-btn');
+            button.classList.add('active');
+            setTimeout(() => button.classList.remove('active'), 300);
+
+            if (!AppState.userPreferences.dislikedArticles.find(a => a.id === article.id)) {
+                AppState.userPreferences.dislikedArticles.push(article);
+                PersonalizationEngine.updateTopicScores(AppState.userPreferences, article, false);
+                Storage.save('userPreferences', AppState.userPreferences);
+                alert('Article passed 👎');
+            }
+        }
+    });
+
+    document.getElementById('article-bookmark-btn').addEventListener('click', () => {
+        const article = AppState.currentModalArticle;
+        if (article) {
+            const button = document.getElementById('article-bookmark-btn');
+            button.classList.add('active');
+            setTimeout(() => button.classList.remove('active'), 300);
+
+            if (!AppState.userPreferences.savedArticles.find(a => a.id === article.id)) {
+                AppState.userPreferences.savedArticles.push(article);
+                Storage.save('userPreferences', AppState.userPreferences);
+                alert('Article bookmarked! 🔖');
+            }
+        }
+    });
+
+    document.getElementById('article-more-btn').addEventListener('click', async () => {
+        const article = AppState.currentModalArticle;
+        if (article) {
+            const button = document.getElementById('article-more-btn');
+            button.classList.add('active');
+            setTimeout(() => button.classList.remove('active'), 300);
+
+            // Close the modal
+            document.getElementById('article-modal').classList.remove('active');
+
+            // Switch to Explore tab
+            UIController.switchTab('explore');
+
+            // Explore with AI in the explore view
+            await UIController.exploreTopicWithAI(article, 'explore');
+        }
+    });
+
+    document.getElementById('article-read-btn').addEventListener('click', () => {
+        const article = AppState.currentModalArticle;
+        if (article && article.url) {
+            const button = document.getElementById('article-read-btn');
+            button.classList.add('active');
+            setTimeout(() => button.classList.remove('active'), 300);
+
+            // Open original article in new tab
+            window.open(article.url, '_blank');
+        }
+    });
+
     // Tab navigation
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             UIController.switchTab(btn.dataset.tab);
         });
-    });
-
-    // Action buttons
-    document.getElementById('like-btn').addEventListener('click', () => {
-        const topCard = document.querySelector('.news-card');
-        if (topCard) {
-            const swiper = new CardSwiper(topCard, () => {});
-            swiper.swipeProgrammatically('right');
-        }
-    });
-
-    document.getElementById('skip-btn').addEventListener('click', () => {
-        const topCard = document.querySelector('.news-card');
-        if (topCard) {
-            const swiper = new CardSwiper(topCard, () => {});
-            swiper.swipeProgrammatically('left');
-        }
-    });
-
-    document.getElementById('save-btn').addEventListener('click', () => {
-        const topCard = document.querySelector('.news-card');
-        if (topCard) {
-            const articleId = parseInt(topCard.dataset.articleId);
-            const article = AppState.articles.find(a => a.id === articleId);
-            if (article && !AppState.userPreferences.savedArticles.includes(article)) {
-                AppState.userPreferences.savedArticles.push(article);
-                Storage.save('userPreferences', AppState.userPreferences);
-                alert('Article saved!');
-            }
-        }
     });
 
     // Settings
@@ -820,11 +1692,38 @@ function setupEventListeners() {
     });
 
     // Reload feed
-    document.getElementById('reload-feed-btn').addEventListener('click', () => {
-        // Reset read articles for demo purposes
-        AppState.userPreferences.readArticles = [];
-        Storage.save('userPreferences', AppState.userPreferences);
-        UIController.renderFeed();
+    document.getElementById('reload-feed-btn').addEventListener('click', async () => {
+        // Show loading state
+        const btn = document.getElementById('reload-feed-btn');
+        const originalText = btn.textContent;
+        btn.textContent = 'Loading...';
+        btn.disabled = true;
+
+        try {
+            // Fetch fresh articles from RSS feeds
+            const topics = AppState.userPreferences.interests.length > 0
+                ? AppState.userPreferences.interests
+                : Object.keys(RSS_FEEDS);
+
+            const freshArticles = await RSSFeedFetcher.fetchAllTopics(topics);
+
+            if (freshArticles.length > 0) {
+                AppState.articles = freshArticles;
+                // Reset read articles to see new content
+                AppState.userPreferences.readArticles = [];
+                Storage.save('userPreferences', AppState.userPreferences);
+                UIController.renderFeed();
+                console.log(`Reloaded ${freshArticles.length} fresh articles`);
+            } else {
+                alert('Unable to fetch new articles. Please check your connection.');
+            }
+        } catch (error) {
+            console.error('Error reloading feed:', error);
+            alert('Error reloading feed. Please try again.');
+        } finally {
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
     });
 
     // Close modals on outside click
@@ -852,9 +1751,6 @@ async function initialize() {
 
     const hasOnboarded = Storage.load('hasOnboarded', false);
 
-    // Load articles (in production, fetch from API)
-    AppState.articles = [...SAMPLE_ARTICLES];
-
     // Apply dark mode if enabled
     if (AppState.userPreferences.darkMode) {
         document.body.classList.add('dark-mode');
@@ -863,16 +1759,65 @@ async function initialize() {
     // Setup event listeners
     setupEventListeners();
 
-    // Simulate loading
-    setTimeout(() => {
-        if (hasOnboarded) {
-            UIController.showScreen('app-screen');
-            UIController.renderFeed();
-        } else {
-            UIController.showScreen('onboarding-screen');
-        }
-    }, 1500);
+    // Start with sample articles for instant loading
+    AppState.articles = [...SAMPLE_ARTICLES];
+    console.log(`Loaded ${AppState.articles.length} sample articles`);
+
+    // Show appropriate screen immediately
+    console.log('hasOnboarded:', hasOnboarded);
+
+    if (hasOnboarded) {
+        console.log('Showing app screen');
+        UIController.showScreen('app-screen');
+        UIController.renderFeed();
+    } else {
+        console.log('Showing onboarding screen');
+        UIController.showScreen('onboarding-screen');
+    }
+
+    // Fetch fresh articles from RSS feeds in the background
+    console.log('Fetching articles from RSS feeds in background...');
+    fetchRSSInBackground(hasOnboarded);
+
+    console.log('Initialization complete');
 }
 
+// Fetch RSS feeds in the background
+async function fetchRSSInBackground(hasOnboarded) {
+    try {
+        const topics = AppState.userPreferences.interests.length > 0
+            ? AppState.userPreferences.interests
+            : null;
+
+        const freshArticles = await RSSFeedFetcher.fetchAllTopics(topics);
+
+        if (freshArticles.length > 0) {
+            console.log(`Loaded ${freshArticles.length} fresh articles from RSS feeds`);
+            AppState.articles = freshArticles;
+
+            // Refresh the feed if user is already in the app
+            if (hasOnboarded && AppState.currentScreen === 'app-screen') {
+                console.log('Refreshing feed with fresh articles');
+                UIController.renderFeed();
+            }
+        } else {
+            console.log('No articles from RSS, keeping sample articles');
+        }
+    } catch (error) {
+        console.error('Error fetching RSS feeds:', error);
+    }
+}
+
+// Expose AppState for debugging and testing
+window.AppState = AppState;
+
 // Start the app
-document.addEventListener('DOMContentLoaded', initialize);
+console.log('app.js loaded');
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM Content Loaded, starting initialization');
+    initialize().catch(error => {
+        console.error('Initialization error:', error);
+        // Fallback: show onboarding screen even if fetch fails
+        UIController.showScreen('onboarding-screen');
+    });
+});
