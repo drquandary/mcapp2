@@ -475,11 +475,46 @@ Return a JSON object with:
         }
     }
 
+    async searchWebForArticles(searchTerms) {
+        // Use NewsAPI or similar to search the web for articles
+        // Free tier allows searching recent news
+        const apiKey = 'e3ec5e24f9794cc8ba8fc5a34a3f7513'; // NewsAPI free tier
+        const query = searchTerms.join(' OR ');
+        const encodedQuery = encodeURIComponent(query);
+
+        try {
+            const response = await fetch(`https://newsapi.org/v2/everything?q=${encodedQuery}&sortBy=publishedAt&pageSize=20&apiKey=${apiKey}`);
+            const data = await response.json();
+
+            if (data.status === 'ok' && data.articles) {
+                return data.articles.map(article => ({
+                    id: RSSFeedFetcher.generateId(article.url),
+                    title: article.title,
+                    source: article.source.name,
+                    topic: 'news',
+                    summary: article.description || '',
+                    content: article.content || article.description || '',
+                    image: article.urlToImage || 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=600&h=250&fit=crop',
+                    readTime: Math.ceil((article.content || article.description || '').split(' ').length / 200),
+                    publishedAt: article.publishedAt,
+                    url: article.url
+                }));
+            }
+            return [];
+        } catch (error) {
+            console.error('Web search error:', error);
+            return [];
+        }
+    }
+
     async exploreArticleThemes(article) {
         if (!this.apiKey) {
+            console.warn('⚠️ No API key configured - using fallback analysis');
             return {
-                themes: [article.topic],
-                keywords: [],
+                specificEntities: [],
+                productNames: [],
+                companyNames: [],
+                exactEvent: '',
                 dates: [],
                 searchTerms: [article.topic]
             };
@@ -495,29 +530,41 @@ Return a JSON object with:
                 },
                 body: JSON.stringify({
                     model: 'claude-3-5-sonnet-20241022',
-                    max_tokens: 300,
+                    max_tokens: 400,
                     messages: [{
                         role: 'user',
-                        content: `Analyze this news article and extract key information for finding related content:
+                        content: `You are analyzing a news article to find VERY SPECIFIC related articles about the SAME event, product, or announcement.
 
 Title: ${article.title}
-Content: ${article.content.substring(0, 1000)}
+Content: ${article.content.substring(0, 1500)}
 
-Extract and return a JSON object with:
+Return a JSON object focusing on the MOST SPECIFIC details:
 {
-  "themes": ["main theme", "secondary theme"],
-  "keywords": ["key term 1", "key term 2", "key term 3"],
-  "dates": ["any relevant dates mentioned"],
-  "events": ["specific events mentioned"],
-  "searchTerms": ["best search term 1", "best search term 2", "best search term 3"]
+  "exactEvent": "precise description of the specific event/announcement (e.g., 'OpenAI GPT-4 Turbo release' not just 'AI model release')",
+  "companyNames": ["exact company names mentioned, including subsidiaries"],
+  "productNames": ["exact product/model names with versions (e.g., 'GPT-4 Turbo', 'iPhone 15 Pro', 'Model S Plaid')"],
+  "specificEntities": ["specific people names, specific locations, specific technologies with version numbers"],
+  "dates": ["specific dates, months, or quarters mentioned"],
+  "searchTerms": ["3-5 HIGHLY SPECIFIC search terms that uniquely identify this story"]
 }
 
-Focus on:
-- Main themes and topics
-- Important keywords and entities (companies, people, places, technologies)
-- Relevant dates or time periods
-- Specific events or developments
-- The best search terms to find similar articles`
+CRITICAL INSTRUCTIONS:
+- Be as SPECIFIC as possible - include version numbers, exact model names, full product names
+- For a "new OpenAI release" article, return "GPT-4 Turbo" or "GPT-5" NOT just "language model"
+- For a "Tesla announcement" article, return the exact product like "Cybertruck delivery" NOT just "electric vehicle"
+- Focus on what makes THIS article unique from other articles in the same category
+- The goal is to find articles about the SAME specific event, not just the same general topic
+
+Example good outputs:
+- exactEvent: "OpenAI announces GPT-4 Turbo with 128K context window"
+- productNames: ["GPT-4 Turbo", "ChatGPT Enterprise"]
+- companyNames: ["OpenAI", "Microsoft"]
+- specificEntities: ["Sam Altman", "128K context window", "JSON mode"]
+
+Example bad outputs (too generic):
+- exactEvent: "AI company releases new model"
+- productNames: ["AI model"]
+- companyNames: ["tech company"]`
                     }]
                 })
             });
@@ -535,16 +582,20 @@ Focus on:
             }
 
             return {
-                themes: [article.topic],
-                keywords: [],
+                specificEntities: [],
+                productNames: [],
+                companyNames: [],
+                exactEvent: '',
                 dates: [],
                 searchTerms: [article.topic]
             };
         } catch (error) {
             console.error('Claude API theme analysis error:', error);
             return {
-                themes: [article.topic],
-                keywords: [],
+                specificEntities: [],
+                productNames: [],
+                companyNames: [],
+                exactEvent: '',
                 dates: [],
                 searchTerms: [article.topic]
             };
@@ -1323,6 +1374,60 @@ class UIController {
         `;
     }
 
+    static calculateArticleRelevance(article, analysis) {
+        // Calculate a relevance score for sorting related articles
+        const titleLower = article.title.toLowerCase();
+        const contentLower = article.content.toLowerCase();
+        const fullText = titleLower + ' ' + contentLower;
+
+        let score = 0;
+
+        // Product name matches in title are most important
+        if (analysis.productNames) {
+            analysis.productNames.forEach(product => {
+                if (titleLower.includes(product.toLowerCase())) score += 20;
+                else if (contentLower.includes(product.toLowerCase())) score += 10;
+            });
+        }
+
+        // Company name matches
+        if (analysis.companyNames) {
+            analysis.companyNames.forEach(company => {
+                if (titleLower.includes(company.toLowerCase())) score += 15;
+                else if (contentLower.includes(company.toLowerCase())) score += 8;
+            });
+        }
+
+        // Specific entities
+        if (analysis.specificEntities) {
+            analysis.specificEntities.forEach(entity => {
+                if (titleLower.includes(entity.toLowerCase())) score += 12;
+                else if (contentLower.includes(entity.toLowerCase())) score += 6;
+            });
+        }
+
+        // Search terms
+        if (analysis.searchTerms) {
+            analysis.searchTerms.forEach(term => {
+                if (fullText.includes(term.toLowerCase())) score += 5;
+            });
+        }
+
+        // Dates
+        if (analysis.dates) {
+            analysis.dates.forEach(date => {
+                if (fullText.includes(date.toLowerCase())) score += 3;
+            });
+        }
+
+        // Recency bonus
+        const daysOld = (Date.now() - new Date(article.publishedAt).getTime()) / (1000 * 60 * 60 * 24);
+        if (daysOld < 1) score += 5;
+        else if (daysOld < 7) score += 2;
+
+        return score;
+    }
+
     static async exploreTopicWithAI(article, targetFeed = 'explore') {
         // Show loading state
         const loadingMsg = document.createElement('div');
@@ -1346,36 +1451,113 @@ class UIController {
             const claude = new ClaudeAPI(AppState.userPreferences.apiKey);
             const analysis = await claude.exploreArticleThemes(article);
 
-            // Find related articles using the AI analysis
-            const relatedArticles = AppState.articles.filter(a => {
+            // DEBUG: Log the analysis
+            console.log('🔍 AI Analysis Results:', analysis);
+            console.log('Article Title:', article.title);
+            console.log('Article Content Length:', article.content.length);
+
+            // SEARCH THE WEB for related articles
+            loadingMsg.innerHTML = `
+                <div class="loading-spinner"></div>
+                <p>🌐 Searching the web for articles about "${analysis.exactEvent || article.title.substring(0, 50)}..."</p>
+            `;
+
+            const webArticles = await claude.searchWebForArticles(analysis.searchTerms);
+            console.log(`Found ${webArticles.length} articles from web search`);
+
+            // Combine web results with local feed
+            const combinedArticles = [...webArticles, ...AppState.articles];
+
+            // Find related articles using the AI analysis with STRICT matching
+            const relatedArticles = combinedArticles.filter(a => {
                 if (a.id === article.id) return false;
 
-                // Check if article matches any of the search terms, themes, or keywords
                 const titleLower = a.title.toLowerCase();
                 const contentLower = a.content.toLowerCase();
+                const fullText = titleLower + ' ' + contentLower;
 
-                // Check search terms
-                const matchesSearchTerms = analysis.searchTerms.some(term =>
-                    titleLower.includes(term.toLowerCase()) ||
-                    contentLower.includes(term.toLowerCase())
-                );
+                let matchScore = 0;
+                let hasSpecificMatch = false;
+                const debugInfo = { articleId: a.id, title: a.title.substring(0, 50) };
 
-                // Check themes
-                const matchesThemes = analysis.themes.some(theme =>
-                    titleLower.includes(theme.toLowerCase()) ||
-                    contentLower.includes(theme.toLowerCase())
-                );
+                // HIGHEST PRIORITY: Exact product names (must match exactly)
+                if (analysis.productNames && analysis.productNames.length > 0) {
+                    const productMatches = analysis.productNames.filter(product =>
+                        fullText.includes(product.toLowerCase())
+                    );
+                    if (productMatches.length > 0) {
+                        matchScore += productMatches.length * 10;
+                        hasSpecificMatch = true;
+                    }
+                }
 
-                // Check keywords
-                const matchesKeywords = analysis.keywords.some(keyword =>
-                    titleLower.includes(keyword.toLowerCase()) ||
-                    contentLower.includes(keyword.toLowerCase())
-                );
+                // HIGH PRIORITY: Company names (with specificity)
+                if (analysis.companyNames && analysis.companyNames.length > 0) {
+                    const companyMatches = analysis.companyNames.filter(company =>
+                        fullText.includes(company.toLowerCase())
+                    );
+                    if (companyMatches.length > 0) {
+                        matchScore += companyMatches.length * 8;
+                        hasSpecificMatch = true;
+                    }
+                }
 
-                return matchesSearchTerms || matchesThemes || matchesKeywords;
+                // HIGH PRIORITY: Specific entities (people, specific tech terms)
+                if (analysis.specificEntities && analysis.specificEntities.length > 0) {
+                    const entityMatches = analysis.specificEntities.filter(entity =>
+                        fullText.includes(entity.toLowerCase())
+                    );
+                    if (entityMatches.length > 0) {
+                        matchScore += entityMatches.length * 6;
+                        hasSpecificMatch = true;
+                    }
+                }
+
+                // MEDIUM PRIORITY: Check if multiple search terms match (requires at least 2)
+                if (analysis.searchTerms && analysis.searchTerms.length > 0) {
+                    const searchMatches = analysis.searchTerms.filter(term =>
+                        fullText.includes(term.toLowerCase())
+                    );
+                    if (searchMatches.length >= 2) {
+                        matchScore += searchMatches.length * 3;
+                        hasSpecificMatch = true;
+                    }
+                }
+
+                // LOWER PRIORITY: Date matching (bonus points)
+                if (analysis.dates && analysis.dates.length > 0) {
+                    const dateMatches = analysis.dates.filter(date =>
+                        fullText.includes(date.toLowerCase())
+                    );
+                    if (dateMatches.length > 0) {
+                        matchScore += dateMatches.length * 2;
+                    }
+                }
+
+                // Only return articles that have specific matches (not just keyword matches)
+                // This ensures we're finding articles about the SAME event, not just related topics
+                // Lower threshold to 3 to be less strict (was 6)
+                const matches = hasSpecificMatch && matchScore >= 3;
+
+                // DEBUG: Log non-matching articles with their scores
+                if (!matches && matchScore > 0) {
+                    console.log(`❌ Article "${debugInfo.title}" scored ${matchScore}, hasSpecific: ${hasSpecificMatch}`);
+                } else if (matches) {
+                    console.log(`✅ Article "${debugInfo.title}" MATCHED with score ${matchScore}`);
+                }
+
+                return matches;
             })
-            .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt))
+            .map(a => ({
+                article: a,
+                // Calculate relevance score for sorting
+                score: this.calculateArticleRelevance(a, analysis)
+            }))
+            .sort((a, b) => b.score - a.score)
+            .map(item => item.article)
             .slice(0, 20);
+
+            console.log(`Found ${relatedArticles.length} related articles after filtering`);
 
             // Remove loading message
             loadingMsg.remove();
@@ -1383,13 +1565,19 @@ class UIController {
             if (relatedArticles.length === 0) {
                 const noResultsBanner = document.createElement('div');
                 noResultsBanner.className = 'ai-analysis-banner';
+
+                //  Check if using fallback (no API key)
+                const isFallback = !AppState.userPreferences.apiKey;
+
                 noResultsBanner.innerHTML = `
-                    <h3>🔍 AI Analysis</h3>
-                    <p><strong>Themes:</strong> ${analysis.themes.join(', ')}</p>
-                    <p><strong>Keywords:</strong> ${analysis.keywords.join(', ')}</p>
-                    ${analysis.dates.length > 0 ? `<p><strong>Dates:</strong> ${analysis.dates.join(', ')}</p>` : ''}
-                    ${analysis.events && analysis.events.length > 0 ? `<p><strong>Events:</strong> ${analysis.events.join(', ')}</p>` : ''}
-                    <p style="margin-top: 1rem;">No matching articles found in current feed. Try refreshing to load more articles!</p>
+                    <h3>🔍 Searching for: "${analysis.exactEvent || article.title}"</h3>
+                    ${isFallback ? '<p style="color: #f59e0b; font-weight: 600;">⚠️ No Claude API key configured - using basic matching only</p>' : ''}
+                    ${analysis.productNames && analysis.productNames.length > 0 ? `<p><strong>Looking for articles mentioning:</strong> ${analysis.productNames.join(', ')}</p>` : ''}
+                    ${analysis.companyNames && analysis.companyNames.length > 0 ? `<p><strong>Companies:</strong> ${analysis.companyNames.join(', ')}</p>` : ''}
+                    ${analysis.specificEntities && analysis.specificEntities.length > 0 ? `<p><strong>Specific details:</strong> ${analysis.specificEntities.slice(0, 5).join(', ')}</p>` : ''}
+                    ${analysis.searchTerms && analysis.searchTerms.length > 0 ? `<p><strong>Search terms:</strong> ${analysis.searchTerms.join(', ')}</p>` : ''}
+                    <p style="margin-top: 1rem; font-weight: 600;">No matching articles found in current feed about this specific event.</p>
+                    ${isFallback ? '<p style="margin-top: 0.5rem;">💡 Configure a Claude API key in Settings for better AI-powered article matching!</p>' : '<p style="margin-top: 0.5rem;">Try refreshing to load more recent articles!</p>'}
                     <button class="secondary-btn" onclick="document.getElementById('reload-feed-btn').click()" style="margin-top: 0.5rem; width: auto;">Refresh Feed</button>
                 `;
                 feedElement.insertBefore(noResultsBanner, feedElement.firstChild);
@@ -1403,12 +1591,12 @@ class UIController {
             const analysisBanner = document.createElement('div');
             analysisBanner.className = 'ai-analysis-banner';
             analysisBanner.innerHTML = `
-                <h3>🔍 AI-Powered Exploration</h3>
-                <p><strong>Themes:</strong> ${analysis.themes.join(', ')}</p>
-                <p><strong>Key Terms:</strong> ${analysis.keywords.slice(0, 5).join(', ')}</p>
-                ${analysis.dates.length > 0 ? `<p><strong>Dates:</strong> ${analysis.dates.join(', ')}</p>` : ''}
-                ${analysis.events && analysis.events.length > 0 ? `<p><strong>Events:</strong> ${analysis.events.join(', ')}</p>` : ''}
-                <p style="margin-top: 0.5rem; font-weight: 600;">Found ${relatedArticles.length} related articles</p>
+                <h3>🔍 Finding Articles About: "${analysis.exactEvent || article.title}"</h3>
+                ${analysis.productNames && analysis.productNames.length > 0 ? `<p><strong>Products:</strong> ${analysis.productNames.join(', ')}</p>` : ''}
+                ${analysis.companyNames && analysis.companyNames.length > 0 ? `<p><strong>Companies:</strong> ${analysis.companyNames.join(', ')}</p>` : ''}
+                ${analysis.specificEntities && analysis.specificEntities.length > 0 ? `<p><strong>Key Details:</strong> ${analysis.specificEntities.slice(0, 5).join(', ')}</p>` : ''}
+                ${analysis.dates && analysis.dates.length > 0 ? `<p><strong>Dates:</strong> ${analysis.dates.join(', ')}</p>` : ''}
+                <p style="margin-top: 0.5rem; font-weight: 600;">Found ${relatedArticles.length} related ${relatedArticles.length === 1 ? 'article' : 'articles'}</p>
             `;
 
             // Add articles based on feed type
