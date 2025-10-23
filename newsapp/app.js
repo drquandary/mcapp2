@@ -476,33 +476,16 @@ Return a JSON object with:
     }
 
     async searchWebForArticles(searchTerms) {
-        // Use NewsAPI or similar to search the web for articles
-        // Free tier allows searching recent news
-        const apiKey = 'e3ec5e24f9794cc8ba8fc5a34a3f7513'; // NewsAPI free tier
-        const query = searchTerms.join(' OR ');
-        const encodedQuery = encodeURIComponent(query);
+        // Fetch fresh RSS feeds from all topics to get more articles
+        console.log(`🔍 Fetching fresh RSS feeds for search terms: ${searchTerms.join(', ')}`);
 
         try {
-            const response = await fetch(`https://newsapi.org/v2/everything?q=${encodedQuery}&sortBy=publishedAt&pageSize=20&apiKey=${apiKey}`);
-            const data = await response.json();
-
-            if (data.status === 'ok' && data.articles) {
-                return data.articles.map(article => ({
-                    id: RSSFeedFetcher.generateId(article.url),
-                    title: article.title,
-                    source: article.source.name,
-                    topic: 'news',
-                    summary: article.description || '',
-                    content: article.content || article.description || '',
-                    image: article.urlToImage || 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=600&h=250&fit=crop',
-                    readTime: Math.ceil((article.content || article.description || '').split(' ').length / 200),
-                    publishedAt: article.publishedAt,
-                    url: article.url
-                }));
-            }
-            return [];
+            // Fetch from ALL RSS topics to get more articles
+            const allArticles = await RSSFeedFetcher.fetchAllTopics();
+            console.log(`✅ Fetched ${allArticles.length} fresh articles from RSS feeds`);
+            return allArticles;
         } catch (error) {
-            console.error('Web search error:', error);
+            console.error('RSS feed search error:', error);
             return [];
         }
     }
@@ -1513,12 +1496,21 @@ class UIController {
                     }
                 }
 
-                // MEDIUM PRIORITY: Check if multiple search terms match (requires at least 2)
+                // MEDIUM PRIORITY: Check if search terms match (at least 1 if no specific entities)
                 if (analysis.searchTerms && analysis.searchTerms.length > 0) {
                     const searchMatches = analysis.searchTerms.filter(term =>
                         fullText.includes(term.toLowerCase())
                     );
-                    if (searchMatches.length >= 2) {
+
+                    // If we have specific entities, require 2+ matches
+                    // If we DON'T have specific entities (fallback mode), accept 1 match
+                    const hasSpecificEntities = (analysis.productNames && analysis.productNames.length > 0) ||
+                                               (analysis.companyNames && analysis.companyNames.length > 0) ||
+                                               (analysis.specificEntities && analysis.specificEntities.length > 0);
+
+                    const requiredMatches = hasSpecificEntities ? 2 : 1;
+
+                    if (searchMatches.length >= requiredMatches) {
                         matchScore += searchMatches.length * 3;
                         hasSpecificMatch = true;
                     }
