@@ -1606,8 +1606,15 @@ class UIController {
             // If analysis failed or returned empty, use article title as search query
             if (!analysis.searchTerms || analysis.searchTerms.length === 0) {
                 console.warn('⚠️ No search terms from Claude - using article title as fallback');
-                analysis.searchTerms = article.title.toLowerCase().split(' ').filter(w => w.length > 3).slice(0, 5);
+                // Extract meaningful words from title (length > 3, not common words)
+                const commonWords = ['the', 'and', 'for', 'with', 'that', 'this', 'from', 'have', 'been', 'will', 'would', 'could', 'about'];
+                analysis.searchTerms = article.title.toLowerCase()
+                    .split(' ')
+                    .map(w => w.replace(/[^a-z0-9]/g, '')) // Remove punctuation
+                    .filter(w => w.length > 3 && !commonWords.includes(w))
+                    .slice(0, 5);
                 analysis.exactEvent = article.title;
+                console.log(`   Generated fallback terms: ${analysis.searchTerms.join(', ')}`);
             }
 
             console.log('🔍 Search terms:', analysis.searchTerms);
@@ -1721,9 +1728,14 @@ class UIController {
                         matches = true;
                     }
                 } else {
-                    // Fallback mode (no Claude analysis) - DON'T match on just topic
-                    // This prevents the Bloomberg "business" article problem
-                    matches = false;
+                    // Fallback mode (no Claude analysis or no specific entities extracted)
+                    // Use RELAXED matching on search terms to still find related content
+                    // Accept if we have at least 2 search term matches (score >= 6)
+                    // OR if we have strong search term matching (score >= 9, meaning 3+ terms)
+                    if (matchScore >= 6) {
+                        matches = true;
+                        console.log(`ℹ️  Fallback match: "${debugInfo.title}" with score ${matchScore}`);
+                    }
                 }
 
                 // DEBUG: Log matching results
