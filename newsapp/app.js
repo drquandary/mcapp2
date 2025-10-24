@@ -1721,9 +1721,12 @@ class UIController {
                         matches = true;
                     }
                 } else {
-                    // Fallback mode (no Claude analysis) - DON'T match on just topic
-                    // This prevents the Bloomberg "business" article problem
-                    matches = false;
+                    // Fallback mode (no Claude analysis) - use simple text matching
+                    // Match if we have at least 1 search term match (score >= 3)
+                    if (matchScore >= 3) {
+                        matches = true;
+                        console.log(`✅ FALLBACK: Article "${debugInfo.title}" matched with score ${matchScore}`);
+                    }
                 }
 
                 // DEBUG: Log matching results
