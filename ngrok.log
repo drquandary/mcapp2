@@ -1,0 +1,75 @@
+t=2025-10-23T09:35:19-0400 lvl=info msg="no configuration paths supplied"
+t=2025-10-23T09:35:19-0400 lvl=info msg="using configuration at default config path" path="/Users/jeffreyvadala/Library/Application Support/ngrok/ngrok.yml"
+t=2025-10-23T09:35:19-0400 lvl=info msg="open config file" path="/Users/jeffreyvadala/Library/Application Support/ngrok/ngrok.yml" err=nil
+t=2025-10-23T09:35:19-0400 lvl=info msg="starting web service" obj=web addr=127.0.0.1:4040 allow_hosts=[]
+t=2025-10-23T09:35:19-0400 lvl=info msg="update available" obj=updater
+t=2025-10-23T09:35:20-0400 lvl=info msg="client session established" obj=tunnels.session
+t=2025-10-23T09:35:20-0400 lvl=info msg="tunnel session started" obj=tunnels.session
+t=2025-10-23T09:35:20-0400 lvl=info msg="started tunnel" obj=tunnels name=command_line addr=http://localhost:8080 url=https://0477e3cbc72f.ngrok-free.app
+t=2025-10-23T09:35:30-0400 lvl=info msg=start pg=/api/tunnels id=4a4c0eb8394074ce
+t=2025-10-23T09:35:30-0400 lvl=info msg=end pg=/api/tunnels id=4a4c0eb8394074ce status=200 dur=261.125µs
+t=2025-10-23T09:35:40-0400 lvl=info msg="join connections" obj=join id=d95bdeba5bce l=[::1]:8080 r=[2600:4040:79ab:9c00:b981:ab5e:e394:d785]:53646
+t=2025-10-23T09:38:26-0400 lvl=info msg=start pg=/api/tunnels id=d3b4792611ee0acc
+t=2025-10-23T09:38:26-0400 lvl=info msg=end pg=/api/tunnels id=d3b4792611ee0acc status=200 dur=148.375µs
+t=2025-10-23T09:38:28-0400 lvl=info msg="join connections" obj=join id=2308d57973d0 l=[::1]:8080 r=[2600:4040:79ab:9c00:b981:ab5e:e394:d785]:53765
+t=2025-10-23T09:38:28-0400 lvl=info msg="join connections" obj=join id=7e5e2ffa12c6 l=[::1]:8080 r=[2600:4040:79ab:9c00:b981:ab5e:e394:d785]:53765
+t=2025-10-23T09:38:28-0400 lvl=info msg="join connections" obj=join id=2466669dca82 l=[::1]:8080 r=[2600:4040:79ab:9c00:b981:ab5e:e394:d785]:53765
+t=2025-10-23T09:38:28-0400 lvl=info msg="join connections" obj=join id=f4bd249380bc l=[::1]:8080 r=[2600:4040:79ab:9c00:b981:ab5e:e394:d785]:53765
+t=2025-10-23T09:41:26-0400 lvl=info msg=start pg=/api/tunnels id=f238be186bc89e14
+t=2025-10-23T09:41:26-0400 lvl=info msg=end pg=/api/tunnels id=f238be186bc89e14 status=200 dur=221.958µs
+t=2025-10-23T09:41:55-0400 lvl=info msg="join connections" obj=join id=3ad615a00cde l=[::1]:8080 r=[2600:4040:79ab:9c00:b981:ab5e:e394:d785]:53905
+t=2025-10-23T09:46:02-0400 lvl=info msg=start pg=/api/tunnels id=cf9c6bf0884a7169
+t=2025-10-23T09:46:02-0400 lvl=info msg=end pg=/api/tunnels id=cf9c6bf0884a7169 status=200 dur=194.583µs
+t=2025-10-23T09:46:02-0400 lvl=info msg=start pg=/api/tunnels id=b386b1d5cf7dfeb6
+t=2025-10-23T09:46:02-0400 lvl=info msg=end pg=/api/tunnels id=b386b1d5cf7dfeb6 status=200 dur=146.333µs
+t=2025-10-23T09:50:41-0400 lvl=info msg=start pg=/api/tunnels id=e126e18197658ca7
+t=2025-10-23T09:50:41-0400 lvl=info msg=end pg=/api/tunnels id=e126e18197658ca7 status=200 dur=130.459µs
+t=2025-10-23T09:51:32-0400 lvl=info msg="join connections" obj=join id=f62759699abd l=[::1]:8080 r=[2607:f470:6:2001:1085:80fe:29f1:7f33]:54124
+t=2025-10-23T09:51:32-0400 lvl=info msg="join connections" obj=join id=dd036c763970 l=[::1]:8080 r=[2607:f470:6:2001:1085:80fe:29f1:7f33]:54124
+t=2025-10-23T09:51:32-0400 lvl=info msg="join connections" obj=join id=1212cc32a7df l=[::1]:8080 r=[2607:f470:6:2001:1085:80fe:29f1:7f33]:54124
+t=2025-10-23T10:51:52-0400 lvl=info msg="join connections" obj=join id=fc65ca7ec747 l=[::1]:8080 r=[2607:f470:34:2105:108f:d7cf:c205:eb9]:52376
+t=2025-10-23T10:51:52-0400 lvl=info msg="join connections" obj=join id=bff8c9dee8c4 l=[::1]:8080 r=[2607:f470:34:2105:108f:d7cf:c205:eb9]:52376
+t=2025-10-23T10:51:52-0400 lvl=info msg="join connections" obj=join id=51e5de290687 l=[::1]:8080 r=[2607:f470:34:2105:108f:d7cf:c205:eb9]:52376
+t=2025-10-23T15:23:34-0400 lvl=info msg="join connections" obj=join id=8a49596845e1 l=[::1]:8080 r=[2607:f470:34:2105:98cd:b03f:b9ef:64df]:59558
+t=2025-10-23T15:23:34-0400 lvl=info msg="join connections" obj=join id=d3625c4202d3 l=[::1]:8080 r=[2607:f470:34:2105:98cd:b03f:b9ef:64df]:59558
+t=2025-10-23T15:23:34-0400 lvl=info msg="join connections" obj=join id=84a58fea6455 l=[::1]:8080 r=[2607:f470:34:2105:98cd:b03f:b9ef:64df]:59558
+t=2025-10-23T15:35:20-0400 lvl=info msg="update available" obj=updater
+t=2025-10-23T16:16:06-0400 lvl=info msg="join connections" obj=join id=42ff9e914710 l=[::1]:8080 r=[2607:f470:6:2001:9cdc:d472:84ad:6d9a]:65329
+t=2025-10-23T16:16:06-0400 lvl=info msg="join connections" obj=join id=1749acc83804 l=[::1]:8080 r=[2607:f470:6:2001:9cdc:d472:84ad:6d9a]:65329
+t=2025-10-23T16:16:06-0400 lvl=info msg="join connections" obj=join id=d4f58323cc30 l=[::1]:8080 r=[2607:f470:6:2001:9cdc:d472:84ad:6d9a]:65329
+t=2025-10-23T16:20:43-0400 lvl=info msg="join connections" obj=join id=fa2777b17620 l=[::1]:8080 r=[2607:f470:6:2001:3dfe:8bb9:4ada:4db9]:64426
+t=2025-10-23T16:20:44-0400 lvl=info msg="join connections" obj=join id=bc65381fc3be l=[::1]:8080 r=[2607:f470:6:2001:3dfe:8bb9:4ada:4db9]:64426
+t=2025-10-23T16:21:05-0400 lvl=info msg="join connections" obj=join id=ed2d6b0b7ada l=[::1]:8080 r=[2607:f470:6:2001:3dfe:8bb9:4ada:4db9]:64426
+t=2025-10-23T16:21:05-0400 lvl=info msg="join connections" obj=join id=8e6ff7b53122 l=[::1]:8080 r=[2607:f470:6:2001:3dfe:8bb9:4ada:4db9]:64426
+t=2025-10-23T16:21:18-0400 lvl=info msg="join connections" obj=join id=f8d3d1b4ee1c l=[::1]:8080 r=[2607:f470:6:2001:3dfe:8bb9:4ada:4db9]:64426
+t=2025-10-23T16:21:18-0400 lvl=info msg="join connections" obj=join id=b5021421f6e4 l=[::1]:8080 r=[2607:f470:6:2001:3dfe:8bb9:4ada:4db9]:64426
+t=2025-10-23T16:21:20-0400 lvl=info msg="join connections" obj=join id=bca2af01e590 l=[::1]:8080 r=[2607:f470:6:2001:3dfe:8bb9:4ada:4db9]:64426
+t=2025-10-23T16:58:08-0400 lvl=info msg="join connections" obj=join id=c81d41c0d87c l=[::1]:8080 r=[2600:1002:b087:a610:fdc1:a8fb:ece0:8e58]:54693
+t=2025-10-23T16:58:08-0400 lvl=info msg="join connections" obj=join id=328a9b8f4325 l=[::1]:8080 r=[2600:1002:b087:a610:fdc1:a8fb:ece0:8e58]:54693
+t=2025-10-23T16:58:08-0400 lvl=info msg="join connections" obj=join id=c1ef60234f20 l=[::1]:8080 r=[2600:1002:b087:a610:fdc1:a8fb:ece0:8e58]:54693
+t=2025-10-23T17:32:30-0400 lvl=info msg="join connections" obj=join id=7981096f50c7 l=[::1]:8080 r=[2600:1002:b087:a610:fdc1:a8fb:ece0:8e58]:60017
+t=2025-10-23T17:32:30-0400 lvl=info msg="join connections" obj=join id=8d4c60c31f68 l=[::1]:8080 r=[2600:1002:b087:a610:fdc1:a8fb:ece0:8e58]:60017
+t=2025-10-23T17:32:30-0400 lvl=info msg="join connections" obj=join id=38504c71b5ca l=[::1]:8080 r=[2600:1002:b087:a610:fdc1:a8fb:ece0:8e58]:60017
+t=2025-10-23T18:58:44-0400 lvl=info msg="join connections" obj=join id=f811b1085612 l=[::1]:8080 r=[2600:4040:79ab:9c00:6101:7654:aa05:a546]:61052
+t=2025-10-23T18:58:44-0400 lvl=info msg="join connections" obj=join id=0d6be8cf46af l=[::1]:8080 r=[2600:4040:79ab:9c00:6101:7654:aa05:a546]:61052
+t=2025-10-23T18:58:44-0400 lvl=info msg="join connections" obj=join id=ba1e9ccd773c l=[::1]:8080 r=[2600:4040:79ab:9c00:6101:7654:aa05:a546]:61052
+t=2025-10-23T19:41:26-0400 lvl=info msg="join connections" obj=join id=b7b1feb866ce l=[::1]:8080 r=[2600:4040:79ab:9c00:6101:7654:aa05:a546]:61175
+t=2025-10-23T19:41:26-0400 lvl=info msg="join connections" obj=join id=bc39a28340b4 l=[::1]:8080 r=[2600:4040:79ab:9c00:6101:7654:aa05:a546]:61175
+t=2025-10-23T19:41:26-0400 lvl=info msg="join connections" obj=join id=3264f89d5e19 l=[::1]:8080 r=[2600:4040:79ab:9c00:6101:7654:aa05:a546]:61175
+t=2025-10-23T20:12:47-0400 lvl=info msg="join connections" obj=join id=517cabeda3ff l=[::1]:8080 r=[2600:4040:79ab:9c00:6101:7654:aa05:a546]:61327
+t=2025-10-23T20:12:47-0400 lvl=info msg="join connections" obj=join id=d21c50ad7ece l=[::1]:8080 r=[2600:4040:79ab:9c00:6101:7654:aa05:a546]:61327
+t=2025-10-23T20:12:47-0400 lvl=info msg="join connections" obj=join id=d3c76157a343 l=[::1]:8080 r=[2600:4040:79ab:9c00:6101:7654:aa05:a546]:61327
+t=2025-10-23T21:35:20-0400 lvl=info msg="update available" obj=updater
+t=2025-10-23T22:57:32-0400 lvl=info msg="join connections" obj=join id=9f744a817b12 l=[::1]:8080 r=[2600:4040:79ab:9c00:6101:7654:aa05:a546]:56423
+t=2025-10-23T22:57:32-0400 lvl=info msg="join connections" obj=join id=ef1aa31f2ca9 l=[::1]:8080 r=[2600:4040:79ab:9c00:6101:7654:aa05:a546]:56423
+t=2025-10-23T22:57:32-0400 lvl=info msg="join connections" obj=join id=9f2717f99cd9 l=[::1]:8080 r=[2600:4040:79ab:9c00:6101:7654:aa05:a546]:56423
+t=2025-10-23T22:57:32-0400 lvl=info msg="join connections" obj=join id=7ce3fe3a202b l=[::1]:8080 r=[2600:4040:79ab:9c00:6101:7654:aa05:a546]:56423
+t=2025-10-23T23:08:13-0400 lvl=info msg="join connections" obj=join id=afe1dae33687 l=[::1]:8080 r=[2600:4040:79ab:9c00:6101:7654:aa05:a546]:56530
+t=2025-10-23T23:08:18-0400 lvl=info msg="join connections" obj=join id=aebab8238dfa l=[::1]:8080 r=[2600:4040:79ab:9c00:6101:7654:aa05:a546]:56530
+t=2025-10-23T23:55:13-0400 lvl=info msg="join connections" obj=join id=4ff353efd882 l=[::1]:8080 r=[2600:4040:79ab:9c00:6c88:fe95:d97e:94a6]:60597
+t=2025-10-23T23:55:13-0400 lvl=info msg="join connections" obj=join id=33fd83059c00 l=[::1]:8080 r=[2600:4040:79ab:9c00:6c88:fe95:d97e:94a6]:60597
+t=2025-10-23T23:55:13-0400 lvl=info msg="join connections" obj=join id=18a4c5b77ac9 l=[::1]:8080 r=[2600:4040:79ab:9c00:6c88:fe95:d97e:94a6]:60597
+t=2025-10-24T03:35:20-0400 lvl=info msg="update available" obj=updater
+t=2025-10-24T06:21:56-0400 lvl=info msg="join connections" obj=join id=bbb0a338fd78 l=[::1]:8080 r=[2600:4040:79ab:9c00:f4e7:6feb:c5b9:b57a]:51086
+t=2025-10-24T06:21:56-0400 lvl=info msg="join connections" obj=join id=1bc81792054e l=[::1]:8080 r=[2600:4040:79ab:9c00:f4e7:6feb:c5b9:b57a]:51086
+t=2025-10-24T06:21:56-0400 lvl=info msg="join connections" obj=join id=5ca44a4a29f0 l=[::1]:8080 r=[2600:4040:79ab:9c00:f4e7:6feb:c5b9:b57a]:51086
