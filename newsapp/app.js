@@ -1,3 +1,8 @@
+// ===== CONFIGURATION =====
+// Set this to your backend URL if using WebSearch backend
+// Leave as null to use RSS/Google News fallback
+const API_BASE_URL = null; // Change to 'http://localhost:5000' to enable WebSearch backend
+
 // ===== STATE MANAGEMENT =====
 const AppState = {
     currentScreen: 'loading',
@@ -521,7 +526,39 @@ Return a JSON object with:
         const allArticles = [];
 
         try {
-            // 1. Fetch fresh RSS feeds from all topics
+            // Try WebSearch backend first (if configured)
+            if (API_BASE_URL) {
+                try {
+                    console.log('🌐 Trying WebSearch backend...');
+                    const response = await fetch(`${API_BASE_URL}/api/search`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            query: exactEvent || searchTerms.slice(0, 3).join(' '),
+                            max_results: 20
+                        })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log(`✅ WebSearch backend returned ${data.articles.length} articles`);
+                        allArticles.push(...data.articles);
+
+                        // Return early if we got good results from WebSearch
+                        if (allArticles.length >= 5) {
+                            console.log('✅ Using WebSearch backend results');
+                            return allArticles;
+                        }
+                    } else {
+                        console.warn(`⚠️ WebSearch backend returned status ${response.status}`);
+                    }
+                } catch (backendError) {
+                    console.warn('⚠️ WebSearch backend not available:', backendError.message);
+                    console.log('📰 Falling back to RSS + Google News');
+                }
+            }
+
+            // Fallback: Fetch fresh RSS feeds from all topics
             console.log('📰 Fetching fresh RSS feeds...');
             const rssArticles = await RSSFeedFetcher.fetchAllTopics();
             console.log(`✅ Fetched ${rssArticles.length} articles from RSS feeds`);
