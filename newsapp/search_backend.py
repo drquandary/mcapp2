@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 NewsBadger Web Search Backend API
-Uses Claude's WebSearch tool to power the app's search functionality
+Uses real web search to power the app's search functionality
 """
 
 from flask import Flask, request, jsonify
@@ -9,12 +9,102 @@ from flask_cors import CORS
 import os
 import json
 from datetime import datetime
+import requests
+from bs4 import BeautifulSoup
+import urllib.parse
+import hashlib
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for browser requests
 
-# This would be replaced with actual WebSearch tool usage in production
-# For now, this is a template that shows the structure
+def search_google_news(query, max_results=10):
+    """
+    Search Google News and scrape results
+    """
+    articles = []
+
+    try:
+        # URL encode the query
+        encoded_query = urllib.parse.quote(query)
+        url = f"https://news.google.com/search?q={encoded_query}&hl=en-US&gl=US&ceid=US:en"
+
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+
+        print(f"[WebSearch] Fetching: {url}")
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Find all article elements in Google News
+        article_elements = soup.find_all('article')
+
+        for idx, article in enumerate(article_elements[:max_results]):
+            try:
+                # Find the first link with substantial text (the title)
+                links = article.find_all('a')
+                title = None
+                link = None
+
+                for a in links:
+                    text = a.get_text(strip=True)
+                    if text and len(text) > 10:  # Title should be substantial
+                        title = text
+                        link = a.get('href', '')
+                        break
+
+                if not title or not link:
+                    continue
+
+                # Convert relative URL to absolute
+                if link.startswith('./'):
+                    link = 'https://news.google.com' + link[1:]
+
+                # Extract source (try to find it after the title link)
+                source = 'Google News'
+                all_text = article.get_text()
+                # Look for common news sources
+                for possible_source in ['CNN', 'BBC', 'Reuters', 'AP', 'Bloomberg', 'WSJ', 'NYT']:
+                    if possible_source in all_text:
+                        source = possible_source
+                        break
+
+                # Extract time
+                time_elem = article.find('time')
+                published_at = datetime.now().isoformat()
+                if time_elem and time_elem.get('datetime'):
+                    published_at = time_elem.get('datetime')
+
+                # Generate unique ID from URL
+                article_id = 'web_' + hashlib.md5(link.encode()).hexdigest()[:12]
+
+                articles.append({
+                    'id': article_id,
+                    'title': title,
+                    'summary': f'News article about {query}',
+                    'content': title,  # Google News doesn't provide content in search results
+                    'url': link,
+                    'source': source,
+                    'topic': 'general',
+                    'publishedAt': published_at,
+                    'readTime': 3,
+                    'image': f'https://via.placeholder.com/600x250/6366f1/ffffff?text=News'
+                })
+
+                print(f"  ✓ Found: {title[:60]}...")
+
+            except Exception as e:
+                print(f"  ✗ Error parsing article: {e}")
+                continue
+
+        print(f"[WebSearch] Found {len(articles)} articles")
+
+    except Exception as e:
+        print(f"[ERROR] Failed to search Google News: {e}")
+
+    return articles
 
 @app.route('/api/search', methods=['POST'])
 def search_news():
@@ -35,34 +125,15 @@ def search_news():
         if not query:
             return jsonify({'error': 'Query parameter is required'}), 400
 
-        # NOTE: In production with Claude Code, you would use:
-        # web_search_results = WebSearch(query=query)
-
-        # For demonstration, here's the structure of what would be returned:
-        # This should be replaced with actual WebSearch tool call
-
         print(f"[WebSearch] Searching for: {query}")
 
-        # Placeholder response structure
-        # In actual implementation, this would come from WebSearch tool
+        # Perform actual web search
+        articles = search_google_news(query, max_results)
+
         results = {
             'query': query,
-            'articles': [
-                {
-                    'id': f'web_{i}',
-                    'title': f'Search result {i} for {query}',
-                    'summary': f'This is a summary of article {i} about {query}',
-                    'content': f'Full content for article {i}...',
-                    'url': f'https://example.com/article-{i}',
-                    'source': 'Web Search',
-                    'topic': 'general',
-                    'publishedAt': datetime.now().isoformat(),
-                    'readTime': 5,
-                    'image': f'https://via.placeholder.com/600x250/6366f1/ffffff?text=Article+{i}'
-                }
-                for i in range(1, min(max_results + 1, 11))
-            ],
-            'total_results': min(max_results, 10)
+            'articles': articles,
+            'total_results': len(articles)
         }
 
         return jsonify(results)
@@ -94,14 +165,13 @@ def explore_topic():
 
         print(f"[WebSearch] Exploring topic: {query}")
 
-        # NOTE: In production, use WebSearch tool here
-        # web_results = WebSearch(query=query)
+        # Perform actual web search
+        articles = search_google_news(query, max_results=20)
 
-        # Placeholder response
         results = {
             'query': query,
-            'articles': [],  # Would be populated by WebSearch
-            'total_results': 0
+            'articles': articles,
+            'total_results': len(articles)
         }
 
         return jsonify(results)

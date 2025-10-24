@@ -1,7 +1,7 @@
 // ===== CONFIGURATION =====
 // Set this to your backend URL if using WebSearch backend
 // Leave as null to use RSS/Google News fallback
-const API_BASE_URL = null; // Change to 'http://localhost:5000' to enable WebSearch backend
+const API_BASE_URL = 'http://localhost:5001'; // WebSearch backend enabled - searches Google News
 
 // ===== STATE MANAGEMENT =====
 const AppState = {
