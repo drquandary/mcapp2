@@ -97,6 +97,13 @@
                 </svg>
                 <span>Explore</span>
             </button>
+            <button class="tab-btn" data-tab="search">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    <circle cx="10" cy="10" r="3"/>
+                </svg>
+                <span>Search</span>
+            </button>
             <button class="tab-btn" data-tab="insights">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
@@ -123,6 +130,17 @@
         <div id="explore-view" class="view">
             <div class="explore-feed" id="explore-feed">
                 <!-- List cards will be dynamically inserted here -->
+            </div>
+        </div>
+
+        <!-- Search View (Full Coverage) -->
+        <div id="search-view" class="view">
+            <div class="search-feed" id="search-feed">
+                <div class="empty-state" style="display: block;">
+                    <div class="empty-icon">🔍</div>
+                    <h3>Full Coverage Search</h3>
+                    <p>Click "+ Find more like this" on any article to discover related coverage from across the web</p>
+                </div>
             </div>
         </div>
 
