@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Test</title>
+    <style>
+        body {
+            background: white;
+            color: black;
+            font-family: Arial, sans-serif;
+            padding: 50px;
+        }
+        .box {
+            border: 2px solid black;
+            padding: 20px;
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Simple Test Page</h1>
+    <div class="box">
+        <p>If you can see this, the server is working!</p>
+        <button onclick="alert('JavaScript works!')">Click Me</button>
+    </div>
+    <div id="output"></div>
+    <script>
+        document.getElementById('output').innerHTML = '<p>JavaScript is running! ✓</p>';
+        console.log('Simple page loaded successfully');
+    </script>
+</body>
+</html>
