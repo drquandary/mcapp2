@@ -1,7 +1,12 @@
 // ===== CONFIGURATION =====
 // Set this to your backend URL if using WebSearch backend
 // Leave as null to use RSS/Google News fallback
-const API_BASE_URL = 'http://localhost:5001'; // WebSearch backend enabled - searches Google News
+// Auto-detect API URL - use same host for ngrok, localhost:5001 for local dev
+const API_BASE_URL = window.location.protocol === 'file:'
+    ? 'http://localhost:5001'
+    : ''; // Use relative URL for ngrok/remote (proxied through same server)
+
+console.log(`[Config] API_BASE_URL: "${API_BASE_URL}" (protocol: ${window.location.protocol})`);
 
 // ===== STATE MANAGEMENT =====
 const AppState = {
@@ -20,13 +25,18 @@ const AppState = {
         darkMode: false
     },
     articles: [],
+    originalArticles: null, // Backup of original feed before web search
     currentCardIndex: 0,
     cardHistory: [], // Track swiped cards for undo
     stats: {
         articlesRead: 0,
         streak: 0,
         lastReadDate: null
-    }
+    },
+    modalExplorer: null, // Initialized in initialize()
+    currentModalFilter: null,
+    currentSearchQuery: null,
+    currentModalArticle: null // Currently viewed article in modal
 };
 
 // ===== RSS FEEDS BY TOPIC =====
@@ -71,7 +81,7 @@ const RSS_FEEDS = {
 // Used as fallback if RSS feeds fail
 const SAMPLE_ARTICLES = [
     {
-        id: 1,
+        id: "1",
         title: "AI Breakthrough: New Language Model Achieves Human-Level Reasoning",
         source: "TechNews",
         topic: "ai",
@@ -82,7 +92,7 @@ const SAMPLE_ARTICLES = [
         publishedAt: new Date().toISOString()
     },
     {
-        id: 2,
+        id: "2",
         title: "Climate Scientists Discover Unexpected Ocean Current Changes",
         source: "Science Daily",
         topic: "climate",
@@ -93,7 +103,7 @@ const SAMPLE_ARTICLES = [
         publishedAt: new Date(Date.now() - 86400000).toISOString()
     },
     {
-        id: 3,
+        id: "3",
         title: "Major Tech Companies Announce New Privacy Standards",
         source: "Tech Weekly",
         topic: "technology",
@@ -104,7 +114,7 @@ const SAMPLE_ARTICLES = [
         publishedAt: new Date(Date.now() - 172800000).toISOString()
     },
     {
-        id: 4,
+        id: "4",
         title: "Breakthrough in Quantum Computing Brings Practical Applications Closer",
         source: "Science Today",
         topic: "science",
@@ -115,7 +125,7 @@ const SAMPLE_ARTICLES = [
         publishedAt: new Date(Date.now() - 259200000).toISOString()
     },
     {
-        id: 5,
+        id: "5",
         title: "Global Markets React to New Economic Policy Announcements",
         source: "Financial Times",
         topic: "business",
@@ -126,7 +136,7 @@ const SAMPLE_ARTICLES = [
         publishedAt: new Date(Date.now() - 345600000).toISOString()
     },
     {
-        id: 6,
+        id: "6",
         title: "Revolutionary Battery Technology Promises 10x Faster Charging",
         source: "Innovation Daily",
         topic: "technology",
@@ -137,7 +147,7 @@ const SAMPLE_ARTICLES = [
         publishedAt: new Date(Date.now() - 432000000).toISOString()
     },
     {
-        id: 7,
+        id: "7",
         title: "New Study Reveals Benefits of Mediterranean Diet on Brain Health",
         source: "Health Journal",
         topic: "health",
@@ -148,7 +158,7 @@ const SAMPLE_ARTICLES = [
         publishedAt: new Date(Date.now() - 518400000).toISOString()
     },
     {
-        id: 8,
+        id: "8",
         title: "Space Agency Announces Plans for Lunar Base Construction",
         source: "Space News",
         topic: "science",
@@ -159,7 +169,7 @@ const SAMPLE_ARTICLES = [
         publishedAt: new Date(Date.now() - 604800000).toISOString()
     },
     {
-        id: 9,
+        id: "9",
         title: "AI Ethics Framework Proposed by Global Tech Leaders",
         source: "Tech Ethics",
         topic: "ai",
@@ -170,7 +180,7 @@ const SAMPLE_ARTICLES = [
         publishedAt: new Date(Date.now() - 691200000).toISOString()
     },
     {
-        id: 10,
+        id: "10",
         title: "Renewable Energy Surpasses Fossil Fuels in Major Economy",
         source: "Energy Report",
         topic: "climate",
@@ -937,6 +947,200 @@ class CardSwiper {
     }
 }
 
+// ===== MODAL EXPLORER =====
+class ModalExplorer {
+    constructor() {
+        this.currentMode = null;
+        this.userModalProfile = this.loadModalProfile();
+        this.modalDescriptions = {
+            'NET': {
+                label: "What's Resonating",
+                hint: "Viral & trending stories",
+                description: "Explore what's gaining traction and social proof",
+                icon: "🌐"
+            },
+            'REF': {
+                label: "What's Verified",
+                hint: "Well-sourced & fact-checked",
+                description: "Dive into evidence-based discussions",
+                icon: "📚"
+            },
+            'POL': {
+                label: "What's Contested",
+                hint: "Systemic debate",
+                description: "Engage with power structures and political analysis",
+                icon: "⚖️"
+            },
+            'MOR': {
+                label: "What's Ethical",
+                hint: "Moral reasoning",
+                description: "Explore ethical dimensions and values",
+                icon: "💭"
+            },
+            'LAW': {
+                label: "What's Actionable",
+                hint: "Legal accountability",
+                description: "Follow legal consequences and justice",
+                icon: "⚖️"
+            }
+        };
+    }
+
+    loadModalProfile() {
+        const profile = localStorage.getItem('modalProfile');
+        return profile ? JSON.parse(profile) : {
+            NET: 0,
+            REF: 0,
+            POL: 0,
+            MOR: 0,
+            LAW: 0,
+            history: [],
+            lastUpdated: Date.now()
+        };
+    }
+
+    saveModalProfile() {
+        this.userModalProfile.lastUpdated = Date.now();
+        localStorage.setItem('modalProfile', JSON.stringify(this.userModalProfile));
+    }
+
+    trackModalInteraction(article, action) {
+        if (!article.modal_signature) return { isCrossover: false };
+
+        const mode = article.modal_signature.dominant;
+        if (!mode) return { isCrossover: false };
+
+        // Get top 2 modes BEFORE this interaction
+        const topModesBefore = this.getTopModes(2);
+        const isNewMode = !topModesBefore.includes(mode);
+
+        // Weight: like = +1, read = +0.5, pass = -0.3
+        const weights = {
+            'like': 1.0,
+            'read': 0.5,
+            'pass': -0.3
+        };
+        const weight = weights[action] || 0;
+
+        // Update mode score (normalize between 0-1)
+        this.userModalProfile[mode] = Math.max(0, Math.min(1, (this.userModalProfile[mode] || 0.6) + (weight * 0.1)));
+
+        // Track in history
+        this.userModalProfile.history.push({
+            mode,
+            pathway: article.modal_signature.pathway,
+            complexity: article.modal_signature.complexity,
+            action,
+            timestamp: Date.now()
+        });
+
+        // Keep only last 100 interactions
+        if (this.userModalProfile.history.length > 100) {
+            this.userModalProfile.history = this.userModalProfile.history.slice(-100);
+        }
+
+        this.saveModalProfile();
+
+        console.log(`[ModalEvolution] ${action} on ${mode} article. Score: ${this.userModalProfile[mode].toFixed(2)}`);
+
+        // Check if this was a crossover (engaging with non-top-2 mode positively)
+        const isCrossover = isNewMode && (action === 'like' || action === 'read');
+
+        if (isCrossover) {
+            console.log(`[ModalExpansion] Crossover detected! User engaged with ${mode} (outside top 2: ${topModesBefore.join(', ')})`);
+        }
+
+        return {
+            isCrossover,
+            mode,
+            topModesBefore,
+            newScore: this.userModalProfile[mode]
+        };
+    }
+
+    getTopModes(count = 2) {
+        return Object.entries(this.userModalProfile)
+            .filter(([key]) => ['NET', 'REF', 'POL', 'MOR', 'LAW'].includes(key))
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, count)
+            .map(([mode]) => mode);
+    }
+
+    async searchByMode(query, modalFilter = null, sortBy = 'relevance') {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/search/reddit`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    query,
+                    modal_filter: modalFilter,
+                    sort_by: sortBy,
+                    limit: 20
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data.results || [];
+        } catch (error) {
+            console.error('Modal search failed:', error);
+            return [];
+        }
+    }
+
+    getModalRecommendation() {
+        // Find least-explored mode
+        const scores = Object.entries(this.userModalProfile)
+            .filter(([k]) => ['NET', 'REF', 'POL', 'MOR', 'LAW'].includes(k))
+            .sort(([,a], [,b]) => a - b);
+
+        if (scores.length === 0) {
+            return { mode: 'REF', reason: this.modalDescriptions['REF'].description };
+        }
+
+        const leastUsed = scores[0][0];
+        return {
+            mode: leastUsed,
+            reason: this.modalDescriptions[leastUsed].description
+        };
+    }
+
+    getModalStats() {
+        const interactions = this.userModalProfile.history.length;
+        const uniquePathways = new Set(
+            this.userModalProfile.history
+                .map(h => h.pathway)
+                .filter(p => p)
+        ).size;
+
+        const avgComplexity = this.userModalProfile.history
+            .filter(h => h.complexity)
+            .reduce((sum, h) => sum + h.complexity, 0) / Math.max(1, this.userModalProfile.history.length);
+
+        return {
+            total_interactions: interactions,
+            unique_pathways: uniquePathways,
+            average_complexity: avgComplexity.toFixed(1)
+        };
+    }
+
+    clearProfile() {
+        this.userModalProfile = {
+            NET: 0,
+            REF: 0,
+            POL: 0,
+            MOR: 0,
+            LAW: 0,
+            history: [],
+            lastUpdated: Date.now()
+        };
+        this.saveModalProfile();
+    }
+}
+
 // ===== UI CONTROLLER =====
 class UIController {
     static showScreen(screenId) {
@@ -1059,17 +1263,79 @@ class UIController {
         return card;
     }
 
+    static calculateModalMatch(article, modalProfile) {
+        // If no modal signature, return neutral score
+        if (!article.modal_signature || !article.modal_signature.dominant) {
+            return 0.5;
+        }
+
+        const dominantMode = article.modal_signature.dominant;
+
+        // Get user's affinity for this mode (0-1 range)
+        const modeScore = modalProfile[dominantMode] || 0.6; // Default to 0.6 if missing
+
+        // Consider complexity bonus (more complex = slightly higher match)
+        const complexity = article.modal_signature.complexity || 1;
+        const complexityBonus = Math.min(complexity * 0.05, 0.2);
+
+        return Math.min(modeScore + complexityBonus, 1.0);
+    }
+
     static async renderFeed() {
         const tiktokFeed = document.getElementById('tiktok-feed');
         tiktokFeed.innerHTML = '';
 
         console.log(`renderFeed: Starting with ${AppState.articles.length} articles`);
 
-        // Get personalized articles
-        const rankedArticles = PersonalizationEngine.rankArticles(
-            AppState.articles,
-            AppState.userPreferences
-        );
+        let rankedArticles = [...AppState.articles];
+
+        // NEW: Apply modal-driven filtering if modal profile exists
+        if (AppState.modalExplorer && AppState.modalExplorer.userModalProfile) {
+            const modalProfile = AppState.modalExplorer.userModalProfile;
+            const hasModalData = rankedArticles.some(a => a.modal_signature);
+
+            if (hasModalData) {
+                console.log('[ModalFeed] Applying modal filtering');
+
+                // Calculate modal match scores
+                rankedArticles.forEach(article => {
+                    article.modalMatchScore = this.calculateModalMatch(article, modalProfile);
+                });
+
+                // Sort by modal match
+                rankedArticles.sort((a, b) => (b.modalMatchScore || 0) - (a.modalMatchScore || 0));
+
+                // Get top 2 user modes
+                const topModes = Object.entries(modalProfile)
+                    .filter(([key]) => ['NET', 'REF', 'POL', 'MOR', 'LAW'].includes(key))
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 2)
+                    .map(([mode]) => mode);
+
+                console.log(`[ModalFeed] User's top modes: ${topModes.join(', ')}`);
+
+                // Apply 80/20 split
+                const splitPoint = Math.floor(rankedArticles.length * 0.8);
+                const primaryArticles = rankedArticles.slice(0, splitPoint);
+                const exploratoryArticles = rankedArticles.slice(splitPoint);
+
+                // Mark exploratory articles
+                exploratoryArticles.forEach(article => {
+                    article.isExploratory = true;
+                });
+
+                rankedArticles = [...primaryArticles, ...exploratoryArticles];
+                console.log(`[ModalFeed] Feed: ${primaryArticles.length} primary, ${exploratoryArticles.length} exploratory`);
+            }
+        }
+
+        // OLD: Fall back to PersonalizationEngine for articles without modal data
+        if (rankedArticles.every(a => !a.modalMatchScore)) {
+            rankedArticles = PersonalizationEngine.rankArticles(
+                AppState.articles,
+                AppState.userPreferences
+            );
+        }
 
         // Show only unread articles
         const unreadArticles = rankedArticles.filter(
@@ -1109,6 +1375,29 @@ class UIController {
 
         const summary = article.aiSummary || article.summary;
 
+        // Modal exploration badge if article is exploratory
+        let exploratoryBadge = '';
+        if (article.isExploratory && article.modal_signature) {
+            const modeIcons = {
+                'NET': '🌐',
+                'REF': '📚',
+                'POL': '⚙️',
+                'MOR': '💗',
+                'LAW': '⚖️'
+            };
+            const modeLabels = {
+                'NET': "What's Resonating",
+                'REF': 'Evidence-Based',
+                'POL': 'Systems Critique',
+                'MOR': 'Moral Lens',
+                'LAW': 'Legal View'
+            };
+            const mode = article.modal_signature.dominant;
+            const icon = modeIcons[mode] || '🔍';
+            const label = modeLabels[mode] || mode;
+            exploratoryBadge = `<div class="exploratory-badge">${icon} Try: ${label}</div>`;
+        }
+
         articleDiv.innerHTML = `
             <img src="${article.image}" alt="${article.title}" class="card-image" onerror="this.src='https://via.placeholder.com/600x250/6366f1/ffffff?text=News'">
             <div class="card-content">
@@ -1117,15 +1406,16 @@ class UIController {
                     <span class="topic-tag">${article.topic}</span>
                     <span class="topic-tag">${article.readTime} min read</span>
                 </div>
+                ${exploratoryBadge}
                 <h2 class="card-title" style="cursor: pointer;">${article.title}</h2>
                 ${article.aiSummary ? '<div class="ai-badge">✨ AI Summary</div>' : ''}
                 <p class="card-summary">${summary}</p>
             </div>
-            <div class="card-footer-actions">
-                <button class="card-footer-btn read-btn" data-article-id="${article.id}">
-                    <span class="btn-icon">📖</span>
-                    <span class="btn-label">Read Full Article</span>
-                </button>
+            <div class="tiktok-actions">
+                <button class="tiktok-action-btn dislike-btn" data-article-id="${article.id}" data-action="dislike" title="Pass">👎</button>
+                <button class="tiktok-action-btn read-btn" data-article-id="${article.id}" data-action="read" title="Read">📖</button>
+                <button class="tiktok-action-btn like-btn" data-article-id="${article.id}" data-action="like" title="Like">❤️</button>
+                <button class="tiktok-action-btn more-btn" data-article-id="${article.id}" data-action="explore" title="Explore More">+</button>
             </div>
         `;
 
@@ -1138,14 +1428,42 @@ class UIController {
             });
         }
 
-        // Add click handler for read button
-        const readBtn = articleDiv.querySelector('.read-btn');
-        if (readBtn) {
-            readBtn.addEventListener('click', (e) => {
+        // Add click handlers for action buttons
+        const actionButtons = articleDiv.querySelectorAll('.tiktok-action-btn');
+        actionButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                this.showArticleDetail(article);
+                const action = btn.dataset.action;
+
+                // Animate button
+                btn.classList.add('active');
+                setTimeout(() => btn.classList.remove('active'), 300);
+
+                if (action === 'read') {
+                    this.showArticleDetail(article);
+                } else if (action === 'like') {
+                    this.handleTikTokAction(article, 'like');
+                    // Scroll to next article after like
+                    const feed = document.getElementById('tiktok-feed');
+                    const currentArticleEl = feed.querySelector(`[data-article-id="${article.id}"]`);
+                    if (currentArticleEl && currentArticleEl.nextElementSibling) {
+                        currentArticleEl.nextElementSibling.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                } else if (action === 'dislike') {
+                    this.handleTikTokAction(article, 'dislike');
+                } else if (action === 'explore') {
+                    // Trigger the explore modal with this article
+                    this.showArticleDetail(article);
+                    // Then trigger the explore more functionality
+                    setTimeout(() => {
+                        const exploreBtn = document.getElementById('article-more-btn');
+                        if (exploreBtn) {
+                            exploreBtn.click();
+                        }
+                    }, 500);
+                }
             });
-        }
+        });
 
         return articleDiv;
     }
@@ -1157,7 +1475,7 @@ class UIController {
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
-                    const articleId = parseInt(entry.target.dataset.articleId);
+                    const articleId = entry.target.dataset.articleId;  // Keep as string
                     if (articleId !== currentArticleId) {
                         currentArticleId = articleId;
                         AppState.currentArticleId = articleId;
@@ -1175,7 +1493,7 @@ class UIController {
 
     static getCurrentArticle() {
         if (!AppState.currentArticleId) return null;
-        return AppState.articles.find(a => a.id === AppState.currentArticleId);
+        return AppState.articles.find(a => String(a.id) === String(AppState.currentArticleId));
     }
 
     static handleTikTokAction(article, action) {
@@ -1339,6 +1657,16 @@ class UIController {
             return;
         }
 
+        // NEW: Track modal interaction and check for crossovers
+        if (AppState.modalExplorer && article.modal_signature) {
+            const result = AppState.modalExplorer.trackModalInteraction(article, action);
+
+            // Show expansion prompt if crossover detected
+            if (result && result.isCrossover) {
+                this.showModalExpansionPrompt(result.mode, article);
+            }
+        }
+
         // Save to storage
         Storage.save('userPreferences', AppState.userPreferences);
         Storage.save('stats', AppState.stats);
@@ -1347,6 +1675,89 @@ class UIController {
         setTimeout(() => {
             this.renderFeed();
         }, 100);
+    }
+
+    static showModalExpansionPrompt(mode, article) {
+        const modeLabels = {
+            'NET': "What's Resonating",
+            'REF': 'Evidence-Based',
+            'POL': 'Systems Critique',
+            'MOR': 'Moral Lens',
+            'LAW': 'Legal View'
+        };
+        const modeDescriptions = {
+            'NET': 'viral & trending stories',
+            'REF': 'sources & research',
+            'POL': 'power dynamics',
+            'MOR': 'ethical perspectives',
+            'LAW': 'legal accountability'
+        };
+
+        const modeIcons = {
+            'NET': '🌐',
+            'REF': '📚',
+            'POL': '⚙️',
+            'MOR': '💗',
+            'LAW': '⚖️'
+        };
+
+        const label = modeLabels[mode] || mode;
+        const description = modeDescriptions[mode] || mode;
+        const icon = modeIcons[mode] || '🔍';
+
+        // Create expansion card
+        const tiktokFeed = document.getElementById('tiktok-feed');
+        const expansionCard = document.createElement('div');
+        expansionCard.className = 'tiktok-article expansion-card';
+
+        expansionCard.innerHTML = `
+            <div class="expansion-content">
+                <div class="expansion-icon">${icon}</div>
+                <h2 class="expansion-title">Expanding Your Lens</h2>
+                <p class="expansion-message">You engaged with a <strong>${label}</strong> article! Want to explore more ${description}?</p>
+
+                <div class="expansion-actions">
+                    <button class="expansion-btn explore-btn" data-mode="${mode}">
+                        Explore ${label}
+                    </button>
+                    <button class="expansion-btn dismiss-btn">
+                        Not Now
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Add event listeners
+        const exploreBtn = expansionCard.querySelector('.explore-btn');
+        const dismissBtn = expansionCard.querySelector('.dismiss-btn');
+
+        exploreBtn.addEventListener('click', () => {
+            // Boost this mode
+            if (AppState.modalExplorer) {
+                AppState.modalExplorer.userModalProfile[mode] = Math.min(1, AppState.modalExplorer.userModalProfile[mode] + 0.2);
+                AppState.modalExplorer.saveModalProfile();
+                console.log(`[ModalExpansion] Boosted ${mode} by 0.2`);
+            }
+
+            // Remove expansion card
+            expansionCard.remove();
+
+            // Re-render feed with boosted mode
+            setTimeout(() => {
+                this.renderFeed();
+            }, 100);
+        });
+
+        dismissBtn.addEventListener('click', () => {
+            expansionCard.remove();
+        });
+
+        // Insert at the beginning of feed (next card)
+        if (tiktokFeed.firstChild) {
+            tiktokFeed.insertBefore(expansionCard, tiktokFeed.firstChild.nextSibling);
+        } else {
+            tiktokFeed.appendChild(expansionCard);
+        }
     }
 
     static async showArticleDetail(article) {
@@ -1420,8 +1831,8 @@ class UIController {
 
         // Add event listeners
         exploreFeed.querySelectorAll('.list-card').forEach(cardEl => {
-            const articleId = parseInt(cardEl.dataset.articleId);
-            const article = AppState.articles.find(a => a.id === articleId);
+            const articleId = cardEl.dataset.articleId;  // Keep as string
+            const article = AppState.articles.find(a => a.id == articleId);  // Use == for type coercion
 
             if (article) {
                 // Read button
@@ -1580,7 +1991,7 @@ class UIController {
         loadingMsg.className = 'ai-analysis-banner loading';
         loadingMsg.innerHTML = `
             <div class="loading-spinner"></div>
-            <p>🤖 AI is analyzing "${article.title.substring(0, 50)}..." to find related content...</p>
+            <p>🔍 Finding related articles about "${article.title.substring(0, 50)}..."</p>
         `;
 
         const feedElement = document.getElementById('search-feed');
@@ -1588,7 +1999,100 @@ class UIController {
         feedElement.appendChild(loadingMsg);
 
         try {
-            // Use Claude to analyze the article
+            // Debug API key
+            console.log('🔍 API Key check:', {
+                hasKey: !!AppState.userPreferences.apiKey,
+                keyPrefix: AppState.userPreferences.apiKey ? AppState.userPreferences.apiKey.substring(0, 10) : 'none',
+                isDummy: AppState.userPreferences.apiKey === 'dummy_key'
+            });
+
+            // If no API key, use simple backend search
+            if (!AppState.userPreferences.apiKey || AppState.userPreferences.apiKey === 'dummy_key') {
+                console.log('⚠️ No Claude API key - using backend search');
+
+                // Use backend search API directly with article title
+                loadingMsg.innerHTML = `
+                    <div class="loading-spinner"></div>
+                    <p>🌐 Searching for related articles...</p>
+                `;
+
+                const response = await fetch(`${API_BASE_URL}/api/search`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query: article.title,
+                        max_results: 20
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Backend search failed');
+                }
+
+                const data = await response.json();
+                loadingMsg.remove();
+
+                if (data.articles.length === 0) {
+                    feedElement.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">🔍</div>
+                            <h3>No Related Articles Found</h3>
+                            <p>Try exploring a different article</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // FIX: Add web search articles to AppState so event listeners can attach
+                data.articles.forEach(searchArticle => {
+                    // Only add if not already in the state
+                    if (!AppState.articles.find(a => a.id === searchArticle.id)) {
+                        AppState.articles.push(searchArticle);
+                        console.log(`✅ Added article to AppState: ${searchArticle.id}`);
+                    }
+                });
+
+                // Show Full Coverage banner
+                const banner = document.createElement('div');
+                banner.className = 'ai-analysis-banner';
+                banner.innerHTML = `
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="margin: 0;">🔍 Full Coverage: "${article.title.substring(0, 60)}${article.title.length > 60 ? '...' : ''}"</h3>
+                            <button class="secondary-btn" id="clear-search-btn" style="flex-shrink: 0; padding: 0.5rem 1rem; font-size: 0.875rem;">
+                                ↩ Clear Search
+                            </button>
+                        </div>
+                        <p style="margin: 0; font-weight: 600; color: var(--primary-color);">
+                            ${data.articles.length} related ${data.articles.length === 1 ? 'article' : 'articles'} • Click + to explore deeper
+                        </p>
+                    </div>
+                `;
+
+                const cards = data.articles.map(a => this.createListArticleCard(a)).join('');
+                feedElement.innerHTML = banner.outerHTML + cards;
+
+                // Add clear button handler
+                const clearBtn = feedElement.querySelector('#clear-search-btn');
+                if (clearBtn) {
+                    clearBtn.addEventListener('click', () => {
+                        feedElement.innerHTML = `
+                            <div class="empty-state">
+                                <div class="empty-icon">🔍</div>
+                                <h3>Search Google News</h3>
+                                <p>Search for any news topic and get fresh results from across the web</p>
+                            </div>
+                        `;
+                    });
+                }
+
+                // Attach event listeners for continuous exploration
+                this.attachExploreEventListeners(feedElement);
+                feedElement.scrollTop = 0;
+                return;
+            }
+
+            // Use Claude to analyze the article (if API key available)
             const claude = new ClaudeAPI(AppState.userPreferences.apiKey);
             const analysis = await claude.exploreArticleThemes(article);
 
@@ -1754,6 +2258,13 @@ class UIController {
 
             console.log(`Found ${relatedArticles.length} related articles after filtering`);
 
+            // Add new articles to AppState so event listeners can find them
+            const newArticles = relatedArticles.filter(newArt =>
+                !AppState.articles.some(existingArt => existingArt.id === newArt.id)
+            );
+            AppState.articles = [...AppState.articles, ...newArticles];
+            console.log(`Added ${newArticles.length} new articles to AppState (total: ${AppState.articles.length})`);
+
             // Remove loading message
             loadingMsg.remove();
 
@@ -1780,22 +2291,23 @@ class UIController {
                 return;
             }
 
-            // Create banner with AI analysis and exit button
+            // Create banner with AI analysis (no exit button - allow continuous exploration)
             const analysisBanner = document.createElement('div');
             analysisBanner.className = 'ai-analysis-banner';
             analysisBanner.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
-                    <div style="flex: 1;">
-                        <h3>🔍 Full Coverage: "${analysis.exactEvent || article.title}"</h3>
-                        ${analysis.productNames && analysis.productNames.length > 0 ? `<p><strong>Products:</strong> ${analysis.productNames.join(', ')}</p>` : ''}
-                        ${analysis.companyNames && analysis.companyNames.length > 0 ? `<p><strong>Companies:</strong> ${analysis.companyNames.join(', ')}</p>` : ''}
-                        ${analysis.specificEntities && analysis.specificEntities.length > 0 ? `<p><strong>Key Details:</strong> ${analysis.specificEntities.slice(0, 5).join(', ')}</p>` : ''}
-                        ${analysis.dates && analysis.dates.length > 0 ? `<p><strong>Dates:</strong> ${analysis.dates.join(', ')}</p>` : ''}
-                        <p style="margin-top: 0.5rem; font-weight: 600;">Showing ${relatedArticles.length} related ${relatedArticles.length === 1 ? 'article' : 'articles'}</p>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="margin: 0;">🔍 Exploring: "${(analysis.exactEvent || article.title).substring(0, 60)}${(analysis.exactEvent || article.title).length > 60 ? '...' : ''}"</h3>
+                        <button class="secondary-btn" id="clear-search-btn" style="flex-shrink: 0; padding: 0.5rem 1rem; font-size: 0.875rem;">
+                            ↩ Clear Search
+                        </button>
                     </div>
-                    <button class="secondary-btn" id="exit-full-coverage-btn" style="flex-shrink: 0;">
-                        ✕ Exit Full Coverage
-                    </button>
+                    ${analysis.productNames && analysis.productNames.length > 0 ? `<p style="margin: 0;"><strong>Products:</strong> ${analysis.productNames.join(', ')}</p>` : ''}
+                    ${analysis.companyNames && analysis.companyNames.length > 0 ? `<p style="margin: 0;"><strong>Companies:</strong> ${analysis.companyNames.join(', ')}</p>` : ''}
+                    ${analysis.specificEntities && analysis.specificEntities.length > 0 ? `<p style="margin: 0;"><strong>Key Details:</strong> ${analysis.specificEntities.slice(0, 5).join(', ')}</p>` : ''}
+                    <p style="margin: 0; font-weight: 600; color: var(--primary-color);">
+                        ${relatedArticles.length} related ${relatedArticles.length === 1 ? 'article' : 'articles'} • Click + to explore deeper
+                    </p>
                 </div>
             `;
 
@@ -1803,12 +2315,18 @@ class UIController {
             const newCards = relatedArticles.map(a => this.createListArticleCard(a, a.matchInfo)).join('');
             feedElement.innerHTML = analysisBanner.outerHTML + newCards;
 
-            // Add exit button handler to return to previous tab
-            const exitBtn = feedElement.querySelector('#exit-full-coverage-btn');
-            if (exitBtn) {
-                exitBtn.addEventListener('click', () => {
-                    // Return to Explore view
-                    this.switchTab('explore');
+            // Add clear search button handler
+            const clearBtn = feedElement.querySelector('#clear-search-btn');
+            if (clearBtn) {
+                clearBtn.addEventListener('click', () => {
+                    // Clear search feed and show empty state
+                    feedElement.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">🔍</div>
+                            <h3>Search Google News</h3>
+                            <p>Search for any news topic and get fresh results from across the web</p>
+                        </div>
+                    `;
                 });
             }
 
@@ -1841,46 +2359,66 @@ class UIController {
     }
 
     static attachExploreEventListeners(exploreFeed) {
-        exploreFeed.querySelectorAll('.list-card').forEach(cardEl => {
-            const articleId = parseInt(cardEl.dataset.articleId);
-            const art = AppState.articles.find(a => a.id === articleId);
+        const cards = exploreFeed.querySelectorAll('.list-card');
+        console.log(`🔧 Attaching event listeners to ${cards.length} cards`);
 
-            if (art) {
-                const readBtn = cardEl.querySelector('.read-btn');
-                if (readBtn) {
-                    readBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        this.showArticleDetail(art);
-                    });
-                }
+        let attachedCount = 0;
+        let notFoundCount = 0;
+        let noButtonCount = 0;
 
-                const passBtn = cardEl.querySelector('.dislike-btn');
-                if (passBtn) {
-                    passBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        this.handleCardAction(art, 'skip');
-                        cardEl.style.display = 'none';
-                    });
-                }
+        cards.forEach((cardEl, index) => {
+            const articleId = cardEl.dataset.articleId;  // Keep as string
+            const art = AppState.articles.find(a => a.id == articleId);  // Use == for type coercion
 
-                const likeBtn = cardEl.querySelector('.like-btn');
-                if (likeBtn) {
-                    likeBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        this.handleCardAction(art, 'like');
-                        cardEl.style.opacity = '0.5';
-                    });
-                }
-
-                const moreBtn = cardEl.querySelector('.more-btn');
-                if (moreBtn) {
-                    moreBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        this.exploreTopicWithAI(art, 'explore');
-                    });
-                }
+            if (!art) {
+                notFoundCount++;
+                console.log(`⚠️ Card ${index}: Article ID ${articleId} not found in AppState.articles`);
+                return;
             }
+
+            const moreBtn = cardEl.querySelector('.more-btn');
+            if (!moreBtn) {
+                noButtonCount++;
+                console.log(`⚠️ Card ${index}: No .more-btn found for article ID ${articleId}`);
+                return;
+            }
+
+            // Attach all event listeners
+            const readBtn = cardEl.querySelector('.read-btn');
+            if (readBtn) {
+                readBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.showArticleDetail(art);
+                });
+            }
+
+            const passBtn = cardEl.querySelector('.dislike-btn');
+            if (passBtn) {
+                passBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.handleCardAction(art, 'skip');
+                    cardEl.style.display = 'none';
+                });
+            }
+
+            const likeBtn = cardEl.querySelector('.like-btn');
+            if (likeBtn) {
+                likeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.handleCardAction(art, 'like');
+                    cardEl.style.opacity = '0.5';
+                });
+            }
+
+            moreBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                console.log('🔍 + button clicked for article:', art.title.substring(0, 50));
+                this.exploreTopicWithAI(art, 'explore');
+            });
+            attachedCount++;
         });
+
+        console.log(`✅ Attached + button listeners: ${attachedCount}, Not found: ${notFoundCount}, No button: ${noButtonCount}`);
     }
 
     static renderInsightsView() {
@@ -1912,6 +2450,251 @@ class UIController {
 
         // Streak
         document.getElementById('streak-value').textContent = `${AppState.stats.streak} days`;
+
+        // Modal Profile Dashboard
+        if (AppState.modalExplorer) {
+            const profile = AppState.modalExplorer.userModalProfile;
+            const stats = AppState.modalExplorer.getModalStats();
+            const hasInteractions = profile.history && profile.history.length > 0;
+
+            // Check if user has completed survey (has modal scores set)
+            const hasModalProfile = profile && (
+                profile.NET !== undefined ||
+                profile.REF !== undefined ||
+                profile.POL !== undefined ||
+                profile.MOR !== undefined ||
+                profile.LAW !== undefined
+            );
+
+            // Mode icons
+            const modeIcons = {
+                'NET': '🌐',
+                'REF': '📚',
+                'POL': '⚙️',
+                'MOR': '💗',
+                'LAW': '⚖️'
+            };
+
+            // Mode labels
+            const modeLabels = {
+                'NET': "What's Resonating",
+                'REF': 'Evidence-Based',
+                'POL': 'Systems Critique',
+                'MOR': 'Moral Reasoning',
+                'LAW': 'Legal View'
+            };
+
+            if (hasModalProfile) {
+                // Show stats
+                document.getElementById('modal-profile-content').style.display = 'none';
+                document.getElementById('modal-profile-stats').style.display = 'block';
+
+                // Update stat values (use 0 if no interactions yet)
+                document.getElementById('modal-total-interactions').textContent = stats.total_interactions || 0;
+                document.getElementById('modal-unique-pathways').textContent = stats.unique_pathways || 0;
+                document.getElementById('modal-avg-complexity').textContent = stats.average_complexity || 0;
+
+                // Calculate normalized scores (highest score = 100%)
+                const maxScore = Math.max(...Object.values(profile));
+                const sortedModes = Object.entries(profile)
+                    .filter(([key]) => ['NET', 'REF', 'POL', 'MOR', 'LAW'].includes(key))
+                    .sort((a, b) => b[1] - a[1]);
+
+                // Calculate exploration progress
+                const engagedModes = sortedModes.filter(([_, score]) => score > 0.6).length;
+                const totalModes = 5;
+                const explorationPercentage = (engagedModes / totalModes) * 100;
+
+                // Count crossover events from history (handle empty history)
+                const crossovers = profile.history ? profile.history.filter(event => {
+                    return event.action === 'like' || event.action === 'read';
+                }).length : 0;
+
+                // Render mode bars
+                const modalProfileBars = document.getElementById('modal-profile-bars');
+                modalProfileBars.innerHTML = sortedModes.map(([mode, score]) => {
+                    const normalizedScore = maxScore > 0 ? (score / maxScore) * 100 : 0;
+                    const modeIcon = modeIcons[mode] || '🔍';
+                    const modeLabel = modeLabels[mode] || mode;
+                    const isExplored = score > 0.6;
+
+                    return `
+                        <div class="modal-profile-bar ${isExplored ? 'explored' : 'unexplored'}">
+                            <div class="modal-profile-bar-label">
+                                <span class="modal-mode-icon">${modeIcon}</span>
+                                <span>${modeLabel}</span>
+                                ${!isExplored ? '<span class="unexplored-badge">🔒 Unexplored</span>' : ''}
+                            </div>
+                            <div class="modal-profile-bar-fill">
+                                <div class="modal-profile-bar-value"
+                                     style="width: ${normalizedScore}%; background: var(--primary-color);">
+                                    <span class="modal-score-text">${score.toFixed(1)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Add exploration progress section
+                const explorationSection = `
+                    <div class="exploration-progress">
+                        <h4>🌱 Modal Discovery Progress</h4>
+                        <div class="progress-stats">
+                            <div class="progress-stat">
+                                <div class="progress-stat-value">${engagedModes}/${totalModes}</div>
+                                <div class="progress-stat-label">Modes Explored</div>
+                            </div>
+                            <div class="progress-stat">
+                                <div class="progress-stat-value">${crossovers}</div>
+                                <div class="progress-stat-label">Crossover Events</div>
+                            </div>
+                            <div class="progress-stat">
+                                <div class="progress-stat-value">${explorationPercentage.toFixed(0)}%</div>
+                                <div class="progress-stat-label">Discovery Rate</div>
+                            </div>
+                        </div>
+                        <div class="exploration-bar">
+                            <div class="exploration-bar-fill" style="width: ${explorationPercentage}%"></div>
+                        </div>
+                    </div>
+                `;
+
+                modalProfileBars.insertAdjacentHTML('beforebegin', explorationSection);
+            } else {
+                // Show empty state
+                document.getElementById('modal-profile-content').style.display = 'block';
+                document.getElementById('modal-profile-stats').style.display = 'none';
+            }
+        }
+    }
+
+    static createModalArticleCard(article) {
+        const summary = article.aiSummary || article.summary;
+        const modalSig = article.modal_signature;
+
+        // Modal mode icons
+        const modeIcons = {
+            'NET': '🌐',
+            'REF': '📚',
+            'POL': '⚙️',
+            'MOR': '💗',
+            'LAW': '⚖️'
+        };
+
+        // Build modal metadata badges
+        let modalBadges = '';
+        if (modalSig) {
+            const modeIcon = modeIcons[modalSig.dominant] || '🔍';
+            modalBadges = `
+                <span class="modal-mode-badge" data-mode="${modalSig.dominant}">
+                    ${modeIcon} ${modalSig.dominant}
+                </span>
+                ${modalSig.pathway ? `<span class="modal-pathway-badge" title="Discussion pathway">${modalSig.pathway}</span>` : ''}
+                ${modalSig.complexity ? `<span class="modal-complexity-badge" title="Modal complexity">⚡ ${modalSig.complexity} modes</span>` : ''}
+            `;
+        }
+
+        return `
+            <div class="list-card modal-card" data-article-id="${article.id}">
+                <div class="list-card-content">
+                    <div class="list-card-meta">
+                        <span class="source-badge">${article.source}</span>
+                        ${modalBadges}
+                    </div>
+                    <h3 class="list-card-title">${article.title}</h3>
+                    <p class="list-card-summary">${summary}</p>
+                    ${article.reddit_comments ? `<p class="reddit-meta">💬 ${article.reddit_comments} comments • ⬆️ ${article.reddit_score} score</p>` : ''}
+
+                    <div class="list-card-actions">
+                        <button class="list-action-btn dislike-btn" data-action="skip" title="Pass">👎</button>
+                        <button class="list-action-btn read-btn" title="Read">📖</button>
+                        <button class="list-action-btn like-btn" data-action="like" title="Like">❤️</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    static renderModalSearchResults(articles, query, modalFilter) {
+        const exploreFeed = document.getElementById('explore-feed');
+
+        if (!articles || articles.length === 0) {
+            exploreFeed.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">🔍</div>
+                    <h3>No results found</h3>
+                    <p>Try a different search term or modal filter</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Render cards
+        exploreFeed.innerHTML = articles.map(article => this.createModalArticleCard(article)).join('');
+
+        // Add event listeners
+        exploreFeed.querySelectorAll('.modal-card').forEach(cardEl => {
+            const articleId = cardEl.dataset.articleId;
+            const article = articles.find(a => String(a.id) === String(articleId));
+
+            if (article) {
+                // Read button
+                const readBtn = cardEl.querySelector('.read-btn');
+                if (readBtn) {
+                    readBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.showArticleDetail(article);
+
+                        // Track modal interaction
+                        if (article.modal_signature && AppState.modalExplorer) {
+                            AppState.modalExplorer.trackModalInteraction(article, 'read');
+                        }
+                    });
+                }
+
+                // Pass button
+                const passBtn = cardEl.querySelector('.dislike-btn');
+                if (passBtn) {
+                    passBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.handleCardAction(article, 'skip');
+                        cardEl.style.display = 'none';
+
+                        // Track modal interaction
+                        if (article.modal_signature && AppState.modalExplorer) {
+                            AppState.modalExplorer.trackModalInteraction(article, 'pass');
+                        }
+                    });
+                }
+
+                // Like button
+                const likeBtn = cardEl.querySelector('.like-btn');
+                if (likeBtn) {
+                    likeBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.handleCardAction(article, 'like');
+                        cardEl.style.opacity = '0.5';
+
+                        // Track modal interaction
+                        if (article.modal_signature && AppState.modalExplorer) {
+                            AppState.modalExplorer.trackModalInteraction(article, 'like');
+                        }
+                    });
+                }
+            }
+        });
+
+        // Show modal recommendation after results
+        if (AppState.modalExplorer) {
+            const recommendation = AppState.modalExplorer.getModalRecommendation();
+            const recommendationEl = document.getElementById('modal-recommendation');
+            const recommendationText = document.getElementById('recommendation-text');
+
+            if (recommendation && recommendationText) {
+                recommendationText.textContent = recommendation;
+                recommendationEl.style.display = 'flex';
+            }
+        }
     }
 }
 
@@ -1926,15 +2709,52 @@ function setupEventListeners() {
 
     // Start button
     document.getElementById('start-btn').addEventListener('click', () => {
-        const selectedChips = document.querySelectorAll('.chip.selected');
-        AppState.userPreferences.interests = Array.from(selectedChips).map(
-            chip => chip.dataset.topic
-        );
+        // Check if we have the new survey or old interest chips
+        const surveyQuestions = document.querySelectorAll('.survey-question');
 
-        // Initialize topic scores
-        AppState.userPreferences.interests.forEach(topic => {
-            AppState.userPreferences.topicScores[topic] = 0.3; // Initial boost
-        });
+        if (surveyQuestions.length > 0) {
+            // NEW: Process truth-seeking survey
+            const surveyAnswers = {
+                q1: parseInt(document.querySelector('input[name="q1"]:checked')?.value || 3),  // NET
+                q2: parseInt(document.querySelector('input[name="q2"]:checked')?.value || 3),  // REF
+                q3: parseInt(document.querySelector('input[name="q3"]:checked')?.value || 3),  // POL
+                q4: parseInt(document.querySelector('input[name="q4"]:checked')?.value || 3),  // MOR
+                q5: parseInt(document.querySelector('input[name="q5"]:checked')?.value || 3)   // LAW
+            };
+
+            // Calculate modal profile (normalize to 0-1 range)
+            const modalProfile = {
+                NET: surveyAnswers.q1 / 5,
+                REF: surveyAnswers.q2 / 5,
+                POL: surveyAnswers.q3 / 5,
+                MOR: surveyAnswers.q4 / 5,
+                LAW: surveyAnswers.q5 / 5,
+                history: [],
+                lastUpdated: Date.now()
+            };
+
+            // Initialize ModalExplorer with survey results
+            if (AppState.modalExplorer) {
+                AppState.modalExplorer.userModalProfile = modalProfile;
+                AppState.modalExplorer.saveModalProfile();
+            }
+
+            console.log('[Survey] Modal profile initialized:', modalProfile);
+
+            // Set default interests based on top modal modes
+            AppState.userPreferences.interests = ['technology', 'science', 'politics'];
+        } else {
+            // OLD: Interest chips (backwards compatibility)
+            const selectedChips = document.querySelectorAll('.chip.selected');
+            AppState.userPreferences.interests = Array.from(selectedChips).map(
+                chip => chip.dataset.topic
+            );
+
+            // Initialize topic scores
+            AppState.userPreferences.interests.forEach(topic => {
+                AppState.userPreferences.topicScores[topic] = 0.3; // Initial boost
+            });
+        }
 
         Storage.save('userPreferences', AppState.userPreferences);
         Storage.save('hasOnboarded', true);
@@ -2118,10 +2938,199 @@ function setupEventListeners() {
             }
         });
     });
+
+    // ===== MODAL EXPLORER EVENT LISTENERS =====
+
+    // Modal filter buttons
+    document.querySelectorAll('.modal-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Update active state
+            document.querySelectorAll('.modal-filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Get selected mode
+            const mode = btn.dataset.mode;
+            AppState.currentModalFilter = mode === 'all' ? null : mode;
+
+            // If there's an active search, re-run it with the new filter
+            if (AppState.currentSearchQuery) {
+                performModalSearch(AppState.currentSearchQuery, AppState.currentModalFilter);
+            }
+        });
+    });
+
+    // Modal search button
+    document.getElementById('modal-search-btn').addEventListener('click', () => {
+        const query = document.getElementById('modal-search-input').value.trim();
+        if (query) {
+            performModalSearch(query, AppState.currentModalFilter);
+        }
+    });
+
+    // Modal search input - Enter key
+    document.getElementById('modal-search-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const query = e.target.value.trim();
+            if (query) {
+                performModalSearch(query, AppState.currentModalFilter);
+            }
+        }
+    });
+
+    // Web search button
+    document.getElementById('web-search-btn').addEventListener('click', () => {
+        const query = document.getElementById('web-search-input').value.trim();
+        if (query) {
+            performWebSearch(query);
+        }
+    });
+
+    // Web search input - Enter key
+    document.getElementById('web-search-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const query = e.target.value.trim();
+            if (query) {
+                performWebSearch(query);
+            }
+        }
+    });
+}
+
+// ===== MODAL SEARCH FUNCTION =====
+async function performModalSearch(query, modalFilter = null) {
+    console.log(`[ModalSearch] Searching for "${query}" with filter: ${modalFilter || 'none'}`);
+
+    // Store current search
+    AppState.currentSearchQuery = query;
+
+    // Show loading state
+    const exploreFeed = document.getElementById('explore-feed');
+    exploreFeed.innerHTML = `
+        <div class="empty-state">
+            <div class="loading-spinner"></div>
+            <h3>Searching Reddit discussions...</h3>
+            <p>Finding ${modalFilter ? modalFilter + ' mode' : 'all modal'} perspectives</p>
+        </div>
+    `;
+
+    try {
+        // Use ModalExplorer to search
+        const articles = await AppState.modalExplorer.searchByMode(query, modalFilter);
+
+        console.log(`[ModalSearch] Found ${articles.length} results`);
+
+        // Render results
+        UIController.renderModalSearchResults(articles, query, modalFilter);
+
+    } catch (error) {
+        console.error('[ModalSearch] Error:', error);
+        exploreFeed.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">⚠️</div>
+                <h3>Search failed</h3>
+                <p>Error: ${error.message}</p>
+                <p>Make sure the backend is running on ${API_BASE_URL}</p>
+            </div>
+        `;
+    }
+}
+
+// ===== WEB SEARCH FUNCTION =====
+async function performWebSearch(query) {
+    console.log(`[WebSearch] Searching Google News for "${query}"`);
+
+    // Store current search
+    AppState.currentSearchQuery = query;
+
+    // Show loading state
+    const searchFeed = document.getElementById('search-feed');
+    searchFeed.innerHTML = `
+        <div class="empty-state">
+            <div class="loading-spinner"></div>
+            <h3>Searching Google News...</h3>
+            <p>Finding articles about "${query}"</p>
+        </div>
+    `;
+
+    try {
+        if (!API_BASE_URL) {
+            throw new Error('Backend API not configured');
+        }
+
+        // Call backend web search API
+        const response = await fetch(`${API_BASE_URL}/api/search`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                query: query,
+                max_results: 20
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Search failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log(`[WebSearch] Found ${data.articles.length} results`);
+
+        if (data.articles.length === 0) {
+            searchFeed.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">🔍</div>
+                    <h3>No Results Found</h3>
+                    <p>Try different search terms or check your spelling</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Save current articles before adding search results
+        if (!AppState.originalArticles) {
+            AppState.originalArticles = [...AppState.articles];
+        }
+
+        // Append search results to articles (don't replace)
+        const newArticles = data.articles.filter(newArt =>
+            !AppState.articles.some(existingArt => existingArt.id === newArt.id)
+        );
+        AppState.articles = [...AppState.articles, ...newArticles];
+
+        // Render results
+        const searchBanner = `
+            <div class="ai-analysis-banner" style="margin: 1rem;">
+                <h3>🔍 Search Results: "${query}"</h3>
+                <p style="margin-top: 0.5rem; font-weight: 600;">Found ${data.articles.length} article${data.articles.length === 1 ? '' : 's'}</p>
+            </div>
+        `;
+
+        const articleCards = data.articles.map(article =>
+            UIController.createListArticleCard(article)
+        ).join('');
+
+        searchFeed.innerHTML = searchBanner + articleCards;
+
+        // Attach event listeners to search results
+        UIController.attachExploreEventListeners(searchFeed);
+
+    } catch (error) {
+        console.error('[WebSearch] Error:', error);
+        searchFeed.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">⚠️</div>
+                <h3>Search Failed</h3>
+                <p>Error: ${error.message}</p>
+                <p>Make sure the backend is running on ${API_BASE_URL}</p>
+            </div>
+        `;
+    }
 }
 
 // ===== INITIALIZATION =====
 async function initialize() {
+    // Initialize Modal Explorer
+    AppState.modalExplorer = new ModalExplorer();
+
     // Load saved data
     const savedPreferences = Storage.load('userPreferences');
     if (savedPreferences) {

@@ -5,16 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>NewsBadger - Your Personalized News</title>
+    <title>NewsMode - Truth Discovery Through Modal Lenses</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <!-- Loading Screen -->
     <div id="loading-screen" class="screen active">
         <div class="loading-content">
-            <div class="logo">🦡</div>
-            <h1>NewsBadger</h1>
-            <p>Personalizing your news feed...</p>
+            <div class="logo">🔍</div>
+            <h1>NewsMode</h1>
+            <p>Discovering truth through modal lenses...</p>
             <div class="loading-spinner"></div>
         </div>
     </div>
@@ -22,9 +22,9 @@
     <!-- Onboarding Screen -->
     <div id="onboarding-screen" class="screen">
         <div class="onboarding-content">
-            <div class="logo-large">🦡</div>
-            <h1>Welcome to NewsBadger</h1>
-            <p class="subtitle">AI-powered personalized news</p>
+            <div class="logo-large">🔍</div>
+            <h1>Welcome to NewsMode</h1>
+            <p class="subtitle">Truth discovery through modal lenses</p>
 
             <div class="onboarding-features">
                 <div class="feature">
@@ -44,19 +44,163 @@
                 </div>
             </div>
 
-            <div class="interest-selector">
-                <h3>Select your interests:</h3>
-                <div class="interest-chips" id="interest-chips">
-                    <div class="chip" data-topic="technology">Technology</div>
-                    <div class="chip" data-topic="science">Science</div>
-                    <div class="chip" data-topic="business">Business</div>
-                    <div class="chip" data-topic="politics">Politics</div>
-                    <div class="chip" data-topic="health">Health</div>
-                    <div class="chip" data-topic="sports">Sports</div>
-                    <div class="chip" data-topic="entertainment">Entertainment</div>
-                    <div class="chip" data-topic="world">World News</div>
-                    <div class="chip" data-topic="climate">Climate</div>
-                    <div class="chip" data-topic="ai">Artificial Intelligence</div>
+            <div class="truth-survey">
+                <h3>How do you discover truth?</h3>
+                <p class="survey-hint">Help us understand your truth-seeking style</p>
+
+                <!-- Question 1: NET mode -->
+                <div class="survey-question">
+                    <p class="question-text">I trust information more when many people are talking about it</p>
+                    <div class="survey-scale">
+                        <span class="scale-label">Strongly Disagree</span>
+                        <div class="scale-options">
+                            <label class="scale-option">
+                                <input type="radio" name="q1" value="1">
+                                <span class="scale-marker">1</span>
+                            </label>
+                            <label class="scale-option">
+                                <input type="radio" name="q1" value="2">
+                                <span class="scale-marker">2</span>
+                            </label>
+                            <label class="scale-option">
+                                <input type="radio" name="q1" value="3" checked>
+                                <span class="scale-marker">3</span>
+                            </label>
+                            <label class="scale-option">
+                                <input type="radio" name="q1" value="4">
+                                <span class="scale-marker">4</span>
+                            </label>
+                            <label class="scale-option">
+                                <input type="radio" name="q1" value="5">
+                                <span class="scale-marker">5</span>
+                            </label>
+                        </div>
+                        <span class="scale-label">Strongly Agree</span>
+                    </div>
+                </div>
+
+                <!-- Question 2: REF mode -->
+                <div class="survey-question">
+                    <p class="question-text">I need to see sources and evidence before believing something</p>
+                    <div class="survey-scale">
+                        <span class="scale-label">Strongly Disagree</span>
+                        <div class="scale-options">
+                            <label class="scale-option">
+                                <input type="radio" name="q2" value="1">
+                                <span class="scale-marker">1</span>
+                            </label>
+                            <label class="scale-option">
+                                <input type="radio" name="q2" value="2">
+                                <span class="scale-marker">2</span>
+                            </label>
+                            <label class="scale-option">
+                                <input type="radio" name="q2" value="3" checked>
+                                <span class="scale-marker">3</span>
+                            </label>
+                            <label class="scale-option">
+                                <input type="radio" name="q2" value="4">
+                                <span class="scale-marker">4</span>
+                            </label>
+                            <label class="scale-option">
+                                <input type="radio" name="q2" value="5">
+                                <span class="scale-marker">5</span>
+                            </label>
+                        </div>
+                        <span class="scale-label">Strongly Agree</span>
+                    </div>
+                </div>
+
+                <!-- Question 3: POL mode -->
+                <div class="survey-question">
+                    <p class="question-text">I look at who has power and who benefits from a claim</p>
+                    <div class="survey-scale">
+                        <span class="scale-label">Strongly Disagree</span>
+                        <div class="scale-options">
+                            <label class="scale-option">
+                                <input type="radio" name="q3" value="1">
+                                <span class="scale-marker">1</span>
+                            </label>
+                            <label class="scale-option">
+                                <input type="radio" name="q3" value="2">
+                                <span class="scale-marker">2</span>
+                            </label>
+                            <label class="scale-option">
+                                <input type="radio" name="q3" value="3" checked>
+                                <span class="scale-marker">3</span>
+                            </label>
+                            <label class="scale-option">
+                                <input type="radio" name="q3" value="4">
+                                <span class="scale-marker">4</span>
+                            </label>
+                            <label class="scale-option">
+                                <input type="radio" name="q3" value="5">
+                                <span class="scale-marker">5</span>
+                            </label>
+                        </div>
+                        <span class="scale-label">Strongly Agree</span>
+                    </div>
+                </div>
+
+                <!-- Question 4: MOR mode -->
+                <div class="survey-question">
+                    <p class="question-text">I judge information by whether it causes harm or helps people</p>
+                    <div class="survey-scale">
+                        <span class="scale-label">Strongly Disagree</span>
+                        <div class="scale-options">
+                            <label class="scale-option">
+                                <input type="radio" name="q4" value="1">
+                                <span class="scale-marker">1</span>
+                            </label>
+                            <label class="scale-option">
+                                <input type="radio" name="q4" value="2">
+                                <span class="scale-marker">2</span>
+                            </label>
+                            <label class="scale-option">
+                                <input type="radio" name="q4" value="3" checked>
+                                <span class="scale-marker">3</span>
+                            </label>
+                            <label class="scale-option">
+                                <input type="radio" name="q4" value="4">
+                                <span class="scale-marker">4</span>
+                            </label>
+                            <label class="scale-option">
+                                <input type="radio" name="q4" value="5">
+                                <span class="scale-marker">5</span>
+                            </label>
+                        </div>
+                        <span class="scale-label">Strongly Agree</span>
+                    </div>
+                </div>
+
+                <!-- Question 5: LAW mode -->
+                <div class="survey-question">
+                    <p class="question-text">I want to know if something is legal or has consequences</p>
+                    <div class="survey-scale">
+                        <span class="scale-label">Strongly Disagree</span>
+                        <div class="scale-options">
+                            <label class="scale-option">
+                                <input type="radio" name="q5" value="1">
+                                <span class="scale-marker">1</span>
+                            </label>
+                            <label class="scale-option">
+                                <input type="radio" name="q5" value="2">
+                                <span class="scale-marker">2</span>
+                            </label>
+                            <label class="scale-option">
+                                <input type="radio" name="q5" value="3" checked>
+                                <span class="scale-marker">3</span>
+                            </label>
+                            <label class="scale-option">
+                                <input type="radio" name="q5" value="4">
+                                <span class="scale-marker">4</span>
+                            </label>
+                            <label class="scale-option">
+                                <input type="radio" name="q5" value="5">
+                                <span class="scale-marker">5</span>
+                            </label>
+                        </div>
+                        <span class="scale-label">Strongly Agree</span>
+                    </div>
                 </div>
             </div>
 
@@ -69,8 +213,8 @@
         <!-- Top Bar -->
         <header class="top-bar">
             <div class="header-left">
-                <div class="logo-small">🦡</div>
-                <h2>NewsBadger</h2>
+                <div class="logo-small">🔍</div>
+                <h2>NewsMode</h2>
             </div>
             <div class="header-right">
                 <button class="icon-btn" id="settings-btn">
@@ -128,18 +272,112 @@
 
         <!-- Explore View -->
         <div id="explore-view" class="view">
+            <div class="modal-explorer-container">
+                <div class="modal-search-header">
+                    <h2>Modal Discovery</h2>
+                    <p class="modal-hint">Explore discussions through different truth-seeking lenses</p>
+                </div>
+
+                <!-- Modal Filter Buttons (Hidden for users - development only) -->
+                <div class="modal-filters" style="display: none;">
+                    <button class="modal-filter-btn active" data-mode="all">
+                        <span class="modal-icon">🎯</span>
+                        <div class="modal-filter-text">
+                            <span class="modal-label">All Modes</span>
+                            <span class="modal-hint-text">Everything</span>
+                        </div>
+                    </button>
+                    <button class="modal-filter-btn" data-mode="NET">
+                        <span class="modal-icon">🌐</span>
+                        <div class="modal-filter-text">
+                            <span class="modal-label">What's Resonating</span>
+                            <span class="modal-hint-text">Viral & trending</span>
+                        </div>
+                    </button>
+                    <button class="modal-filter-btn" data-mode="REF">
+                        <span class="modal-icon">📚</span>
+                        <div class="modal-filter-text">
+                            <span class="modal-label">Evidence-Based</span>
+                            <span class="modal-hint-text">Sources & research</span>
+                        </div>
+                    </button>
+                    <button class="modal-filter-btn" data-mode="POL">
+                        <span class="modal-icon">⚙️</span>
+                        <div class="modal-filter-text">
+                            <span class="modal-label">Systems Critique</span>
+                            <span class="modal-hint-text">Power & structure</span>
+                        </div>
+                    </button>
+                    <button class="modal-filter-btn" data-mode="MOR">
+                        <span class="modal-icon">💗</span>
+                        <div class="modal-filter-text">
+                            <span class="modal-label">Moral Reasoning</span>
+                            <span class="modal-hint-text">Ethics & values</span>
+                        </div>
+                    </button>
+                    <button class="modal-filter-btn" data-mode="LAW">
+                        <span class="modal-icon">⚖️</span>
+                        <div class="modal-filter-text">
+                            <span class="modal-label">Legal View</span>
+                            <span class="modal-hint-text">Justice & accountability</span>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Reddit Search Box -->
+                <div class="modal-search-box">
+                    <input
+                        type="text"
+                        id="modal-search-input"
+                        class="modal-search-input"
+                        placeholder="Search Reddit discussions..."
+                    >
+                    <button id="modal-search-btn" class="modal-search-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"/>
+                            <path d="M21 21l-4.35-4.35"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Modal Profile Recommendation -->
+                <div id="modal-recommendation" class="modal-recommendation" style="display: none;">
+                    <span class="recommendation-icon">💡</span>
+                    <span id="recommendation-text"></span>
+                </div>
+            </div>
+
             <div class="explore-feed" id="explore-feed">
                 <!-- List cards will be dynamically inserted here -->
             </div>
         </div>
 
-        <!-- Search View (Full Coverage) -->
+        <!-- Search View (Web News Search) -->
         <div id="search-view" class="view">
+            <!-- Search Input Header -->
+            <div class="web-search-header">
+                <div class="web-search-bar">
+                    <input
+                        type="text"
+                        id="web-search-input"
+                        class="web-search-input"
+                        placeholder="Search any news topic..."
+                        />
+                    <button id="web-search-btn" class="web-search-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"/>
+                            <path d="M21 21l-4.35-4.35"/>
+                        </svg>
+                        Search
+                    </button>
+                </div>
+            </div>
+
             <div class="search-feed" id="search-feed">
                 <div class="empty-state" style="display: block;">
                     <div class="empty-icon">🔍</div>
-                    <h3>Full Coverage Search</h3>
-                    <p>Click "+ Find more like this" on any article to discover related coverage from across the web</p>
+                    <h3>Search Google News</h3>
+                    <p>Search for any news topic and get fresh results from across the web</p>
                 </div>
             </div>
         </div>
@@ -164,6 +402,45 @@
                     <div class="streak-info">
                         <span class="streak-emoji">🔥</span>
                         <span class="streak-value" id="streak-value">0 days</span>
+                    </div>
+                </div>
+
+                <!-- Modal Profile Dashboard -->
+                <div class="stat-card modal-profile-card">
+                    <h3>🔍 Your Modal Profile</h3>
+                    <p class="modal-profile-hint">How you explore different truth-seeking perspectives</p>
+
+                    <div id="modal-profile-content">
+                        <div class="modal-profile-empty">
+                            <p>Search Reddit with modal filters to build your profile!</p>
+                            <p style="font-size: 0.9rem; opacity: 0.7; margin-top: 0.5rem;">
+                                Try exploring discussions in the <strong>Explore</strong> tab
+                            </p>
+                        </div>
+                    </div>
+
+                    <div id="modal-profile-stats" style="display: none;">
+                        <div class="modal-stat-grid">
+                            <div class="modal-stat">
+                                <div class="modal-stat-icon">📊</div>
+                                <div class="modal-stat-value" id="modal-total-interactions">0</div>
+                                <div class="modal-stat-label">Interactions</div>
+                            </div>
+                            <div class="modal-stat">
+                                <div class="modal-stat-icon">🛤️</div>
+                                <div class="modal-stat-value" id="modal-unique-pathways">0</div>
+                                <div class="modal-stat-label">Pathways</div>
+                            </div>
+                            <div class="modal-stat">
+                                <div class="modal-stat-icon">⚡</div>
+                                <div class="modal-stat-value" id="modal-avg-complexity">0</div>
+                                <div class="modal-stat-label">Avg Complexity</div>
+                            </div>
+                        </div>
+
+                        <div class="modal-profile-bars" id="modal-profile-bars">
+                            <!-- Modal mode bars will be inserted here -->
+                        </div>
                     </div>
                 </div>
 
